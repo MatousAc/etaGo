@@ -1,49 +1,69 @@
 # this file defines the structure of a fisher agent
 from states import state
+from uuid import uuid4
 import asyncio as aio, websockets as ws
-import socket, uuid, random, json, time
+import random, json, time
+
 class fisher:
+  # static
   HOST = "127.0.0.1"
   PORT = 4444
+
   def __init__(self):
-    # self.port = random.randint(1024, 65535)
-    self.uuid = uuid.uuid4()
-    self.sock =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    self.info = {
+    self.uuid = uuid4() # generate uuid
+    self.info = { # keeps track of client info
       "state"     : state.DISCONNECTED,
       "am_ready"  : False
     }
-    self.game = {}
-    aio.run(self.play())
+    self.game = {} # game state
     print(self.uuid)
-    print("created fisher")
+    # make connection
+    aio.run(self.connect())
 
-  async def send(self):
+  async def send(self): # sends info
     await self.sock.send(json.dumps(self.info))
-
-  async def play(self):
-    print(f"connecting to: ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
+  # connects to sever
+  async def connect(self):
     self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
     self.info["state"] = state.CONNECTED
-    input("press enter to signal that you are ready to play")
+    input("press enter to signal that you are ready to play") # blocks until ready
     self.info["am_ready"] = True
-
+    await self.loop()
+    # keeps agent playing
+  async def loop(self):
     while True:
       await self.sock.send("PING")
       update = json.loads(await self.sock.recv())
+      
       if (update != self.game):
         self.game = update
         print(self.game)
-        self.handle_states()
-        await self.send()
+        self.info["state"] = self.game["state"]
+        # handling states
+        if self.game["state"] == 1: # restart
+          await self.send()
+        elif (self.game["state"] == 2) and False: # revert
+          self.info["am_ready"] = False
+          self.info["state"] = state.CONNECTED
+          await self.send()
+          input("press enter to signal that you are ready to play") # blocks until ready
+          self.info["am_ready"] = True          
+        elif self.game["state"] in [3,4]: # updated to info
+          print (self)
+          print("taking notes")
+        elif self.game["state"] == 5:
+          print("choosing player and card")
+        elif self.game["state"] == 6:
+          pass
+        else:
+          print("invalid or disconnected state returned")
       time.sleep(1)
 
-  def handle_states(self):
-    pass
-
+  # destructor
   def __del__(self):
     # self.sock.close()
     pass
 
+# testing
 if __name__ == "__main__":
   etaGo = fisher()
