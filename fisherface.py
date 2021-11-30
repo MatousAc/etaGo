@@ -8,6 +8,7 @@ class fisher:
   # static
   HOST = "127.0.0.1"
   PORT = 4444
+  NUM_DELT = 7
 
   def __init__(self):
     self.uuid = uuid4() # generate uuid
