@@ -1,1 +1,0 @@
-from fisherface import fisher
