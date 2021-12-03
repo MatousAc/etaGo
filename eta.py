@@ -15,7 +15,7 @@ class etaGo(fisher):
     deck = {} # returns an object representing a deck of possibilities
     for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a"]:
         for suit in ["diams", "spades", "clubs", "hearts"]:
-            deck[f"{rank} {suit}"] = cards_in_hand/self.stats["unknown_cards"]
+          deck[f"{rank} {suit}"] = cards_in_hand/self.stats["unknown_cards"]
     return deck
 
   def avg_prob(self, cards_in_hand):
