@@ -9,14 +9,9 @@ class etaGo(fisher):
       "unknown_cards"   : 52,
       "first_pass"    : True
     }
+    self.hand = []
+    self.last_play = {}
     super().__init__()
-
-  def possibilities_deck(self, cards_in_hand):
-    deck = {} # returns an object representing a deck of possibilities
-    for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a"]:
-        for suit in ["diams", "spades", "clubs", "hearts"]:
-          deck[f"{rank} {suit}"] = cards_in_hand/self.stats["unknown_cards"]
-    return deck
 
   def avg_prob(self, cards_in_hand):
     return cards_in_hand/self.stats["unknown_cards"]
@@ -27,11 +22,34 @@ class etaGo(fisher):
     for pid in range(self.stats["num_players"]):
       if pid != self.game["p_id"]: # if not your own id
         self.ihands.append(self.possibilities_deck(self.NUM_DELT))
-        for card, prob in self.ihands[pid].items():
+        for card in self.ihands[pid].keys():
           if (card in self.game["hand"]):
             self.ihands[pid][card] = 0
       else:
         self.ihands.append(None)
+    h.print_dict_list(self.ihands)
+
+  def ihands_zero(self, known_cards):
+    self.stats["unknown_card"] -= len(known_cards)
+    for hand in self.ihands:
+      for card in hand.keys():
+        if (card in known_cards): hand[card] = 0
+
+  # def prob_recalc(self):
+  #   for hand in self.ihands:
+  #     avgp = self.avg_prob(len(hand))
+  #     for card in hand.keys():
+  #       if h.eq(hand[card], 1):
+
+
+  def hand_change(self): # if we gained a card
+    if len(self.hand) >= len(self.game["hand"]): return
+    new_cards = []
+    for card in self.game["hand"]:
+      if card not in self.hand:
+        new_cards.append(card)
+    self.ihand_zero(new_cards)
+    # self.prob_recalc()
 
   def think(self):
     print("overridden think")
@@ -39,7 +57,8 @@ class etaGo(fisher):
       self.configure_hands()
       self.stats["first_pass"] = False
     # here we change up all the probabilities based on events
-
+    if (self.hand != self.game["hand"]): self.hand_change()
+    if (self.last_play !=)
 
   def play(self):
     print("overridden play")

@@ -9,6 +9,7 @@ class fisher:
   HOST = "127.0.0.1"
   PORT = 4444
   NUM_DELT = 7
+  AVGP = -1 # used to represent the "average probability"
 
   def __init__(self):
     self.uuid = uuid4() # generate uuid
@@ -66,6 +67,14 @@ class fisher:
           print("invalid or disconnected state returned")
       time.sleep(1)
 
+  def possibilities_deck(self):
+    deck = {} # returns an object representing a deck of possibilities
+    for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a"]:
+        for suit in ["diams", "spades", "clubs", "hearts"]:
+          deck[f"{rank} {suit}"] = self.AVGP
+    return deck
+  def avg_prob(self, cards_in_hand):
+    pass
   # destructor
   def __del__(self):
     # self.sock.close()
