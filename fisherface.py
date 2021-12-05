@@ -80,7 +80,7 @@ class fisher:
     pass
   def other_pids(self, pid = -1):
     return [id for id in range(0, self["num_players"])].remove(pid)
-  def cards_rank(self, rank):
+  def set(self, rank):
     return [f"{rank} {suit}" for suit in self.SUITS]
   # destructor
   def __del__(self):

@@ -1,5 +1,5 @@
 # defines a few helper functions
-def eq(f1, f2, allowed_error = 1e-3):
+def eq(f1, f2, allowed_error = 1e-2):
   return abs(f1 - f2) <= allowed_error
 def print_dict_list(list):
   print("[")
