@@ -10,17 +10,16 @@ class fisher:
   PORT = 4444
   NUM_DELT = 7
   AVGP = -1 # used to represent the "average probability"
-  ID = -1
   SUITS = ["diams", "spades", "clubs", "hearts"]
 
   def __init__(self):
     self.uuid = uuid4() # generate uuid
+    self.id = -1
     self.info = { # keeps track of client info
       "state"     : state.DISCONNECTED,
       "am_ready"  : False
     }
     self.game = {} # game state
-    print(self.uuid)
     # make connection
     aio.run(self.connect())
   # logic - meant to be overridden
@@ -45,7 +44,7 @@ class fisher:
       
       if (update != self.game):
         self.game = update
-        if self.ID == -1: self.ID = self.game["p_id"] # set id
+        if self.id == -1: self.id = self.game["p_id"] # set id
         print(self.game)
         self.info["state"] = self.game["state"]
         # handling states
@@ -74,7 +73,7 @@ class fisher:
     deck = {} # returns an object representing a deck of possibilities
     for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a"]:
         for suit in ["diams", "spades", "clubs", "hearts"]:
-          deck[f"{rank} {suit}"] = self.AVGP
+          deck[f"{rank} {suit}"] = self.AVGP # repr by -1 val
     return deck
   def avg_prob(self, cards_in_hand):
     pass

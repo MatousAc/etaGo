@@ -9,6 +9,6 @@ def print_dict_list(list):
       print(entry)
       continue
     for key, value in entry.items():
-      print(f"  {key[0:2] + key[3] if (key[0] == '1') else key[0:3]}: {(int)(value * 100)}%")
+      print(f"  {key[0:2] + key[3] if (key[0] == '1') else key[0:3]}: {(value)}")
     print(" }")
   print("]")

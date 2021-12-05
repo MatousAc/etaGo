@@ -18,21 +18,26 @@ class etaGo(fisher):
     print(self.stats["rank_reqs"])
     super().__init__()
 
-  def avg_prob(self, cards_in_hand):
-    return cards_in_hand/self.stats["unknown_cards"]
+  def avg_prob(self, hand):
+    unknown_in_hand = 0
+    for card, prob in hand.items():
+      if not(h.eq(1, prob)) or (h.eq(0, prob)):
+        unknown_in_hand += 1
+    return unknown_in_hand/self.stats["unknown_cards"]
   def drew_requested_card(self):
     return (self.last_play["player_asking"] == self.game["last_play"]["player_asking"]) and not self.last_play["success"]
 
   def configure_hands(self): # imaginary hands setup
     self.stats["unknown_cards"] -= len(self.game["hand"])
     self.stats["num_players"] = len(self.game["other_hands"]) + 1
+    self.hand = self.game["hand"]
     for pid in range(self.stats["num_players"]):
-      if pid != self.game["p_id"]: # if not your own id
+      if pid != self.id:
         self.ihands.append(self.possibilities_deck())
         for card in self.ihands[pid].keys():
-          if (card in self.game["hand"]):
+          if (card in self.hand):
             self.ihands[pid][card] = 0
-      else:
+      else: # if it's you:
         self.ihands.append(self.possibilities_deck())
         for card in self.ihands[pid]: # our id - set all our probs
           self.ihands[pid][card] = 1 if (card in self.hand) else 0
@@ -87,7 +92,7 @@ class etaGo(fisher):
           old_cards.append(card)
       self.ihands_zero(old_cards, [self.ID])
   def handle_draw(self, pid):
-    avg_prob = self.avg_prob(len(self.ihands[pid]))
+    avg_prob = self.avg_prob(self.ihands[pid])
     for card in self.ihands[pid].keys():
       if 0 <= self.ihands[pid][card] < (avg_prob * 0.9):
         self.ihands[pid][card] += avg_prob / 5
@@ -136,7 +141,6 @@ class etaGo(fisher):
 
   def think(self):
     if self.stats["first_pass"]:
-      self.hand = self.game["hand"]
       self.configure_hands()
       self.stats["first_pass"] = False
       self.stats["match_counts"] = [0] * self.stats["num_players"]
