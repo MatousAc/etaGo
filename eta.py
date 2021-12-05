@@ -7,14 +7,19 @@ class etaGo(fisher):
     self.stats = {
       "num_players"   : 0,
       "unknown_cards"   : 52,
-      "first_pass"    : True
+      "first_pass"    : True,
+      "match_counts" :[]
     }
     self.hand = []
     self.last_play = {}
+    self.matches = {}
     super().__init__()
 
   def avg_prob(self, cards_in_hand):
     return cards_in_hand/self.stats["unknown_cards"]
+  def drew_requested_card(self):
+    return (self.last_play["player_asking"] == self.game["last_play"]["player_asking"]) and not self.last_play["success"]
+
   def configure_hands(self): # imaginary hands setup
     self.stats["unknown_cards"] -= len(self.game["hand"])
     self.stats["num_players"] = len(self.game["other_hands"]) + 1
@@ -31,23 +36,40 @@ class etaGo(fisher):
 
     h.print_dict_list(self.ihands)
   def ihands_zero(self, known_cards, pids): # zeroes prob. of cards in hands
-    self.stats["unknown_card"] -= len(known_cards)
+    self.stats["unknown_cards"] -= len(known_cards)
     for pid in pids:
       for card in self.ihands[pid].keys():
         if (card in known_cards): self.ihands[pid][card] = 0
-  def num_of_rank_known(self, rank, pids):
+  def asker_rr(self, rank, num_known, cards_known, pid): # rank recalc - worth reviewing logic
+    cards_in_hand = []
+    for card in self.cards_rank(rank):
+      if h.eq(1, self.ihands[pid][card]):
+        cards_in_hand.append(card)
+        num_known += 1
+    for card in self.cards_rank(rank):
+      prob = self.ihands[pid][card]
+      if (prob == 1) or (prob == 0):
+        continue # if we know they do or don't have the card
+      elif card in cards_known: # if someone else has card (useless?)
+        self.ihands[pid][card] = 0
+      elif prob == self.AVGP: # if we have no info on it yet
+        self.ihands[pid][card] = 1 / (4 - num_known)
+  def rank_known(self, rank, pids):
     count = 0
+    cards = []
+    cards_in_rank = self.cards_rank(rank)
     for pid in pids:
       avg_prob = self.avg_prob(self.ihands[pid])
-      for card, prob in self.ihands[pid].items():
+      for card in cards_in_rank:
         culm_prob = 0
-        if (card.split()[0] == rank):
-          if h.eq(1, prob):
-            count += 1
-          elif prob > avg_prob:
-            culm_prob += prob
-      count += culm_prob // 1 # FIXME - this probably doesn't work
-    return count
+        prob = self.ihands[pid][card]
+        if h.eq(1, prob):
+          count += 1
+          cards.append(card)
+        elif prob > avg_prob:
+          culm_prob += prob
+      count += culm_prob
+    return count, cards
   def hand_change(self): # if our hand changed
     if len(self.hand) < len(self.game["hand"]):
       new_cards = [] # gained a card
@@ -61,24 +83,43 @@ class etaGo(fisher):
         if card not in self.game["hand"]:
           old_cards.append(card)
       self.ihands_zero(old_cards, [self.ID])
-
   def request_made(self): # someone asked someone for a card
-    self.last_play = self.game["last_play"]
-    rank, suit = self.last_play["card_asked_for"].split()
-    num_in_hands = self.num_of_rank_known(rank, 
-      self.other_pids(self.last_play["player_asking"]))
+    asking_pid = self.last_play["player_asking"]
+    asked_pid = self.last_play["player_asked"]
+    if self.drew_requested_card(): # playing again after failure
+      card = self.last_play["card_asked_for"] # card that was drawn last play
+      self.ihands_zero([card], self.other_pids(asking_pid))
+      self.ihands[asking_pid][card] = 1 # set to known
     
-    
+    self.last_play = self.game["last_play"] # otherwise
+    card = self.last_play["card_asked_for"]
+    rank, suit = card.split()
+    num_known, cards_known = self.rank_known(rank, self.other_pids(asking_pid))
+    self.asker_rr(rank, num_known, cards_known, asking_pid)
+    if self.last_play["success"]:
+      self.ihands[asking_pid][card] = 1
+      self.ihands_zero([card], self.other_pids(asking_pid))
+    else:
+      self.ihands[asked_pid][card] = 0
+  def match_made(self):
+    for match in self.game["matches"]:
+      if match not in self.matches:
+        [pid, rank] = match # found new match
+    self.matches == self.game["matches"]
+    self.stats["match_counts"][pid] += 1
+    self.ihands_zero(self.cards_rank(rank), range(self.stats["num_players"]))
 
   def think(self):
-    print("overridden think")
     if self.stats["first_pass"]:
+      self.hand = self.game["hand"]
       self.configure_hands()
       self.stats["first_pass"] = False
+      self.stats["match_counts"] = [0] * self.stats["num_players"]
+      return # we assume no more thinking
     # here we change up all the probabilities based on events
-    if (self.hand != self.game["hand"]): self.hand_change()
-    if (self.last_play != self.game["last_play"]): self.request_made()
-
+    if self.hand != self.game["hand"]: self.hand_change()
+    if self.last_play != self.game["last_play"]: self.request_made()
+    if self.matches != self.game["matches"]: self.match_made()
 
   def play(self):
     print("overridden play")
