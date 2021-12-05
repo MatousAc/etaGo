@@ -14,7 +14,12 @@ class etaGo(fisher):
       for r in [n for n in range(2, 11)] + ["j", "q", "k", "a"]}
     }
     self.hand = []
-    self.last_play = {}
+    self.last_play = {
+      "player_asking" : None,
+      "player_asked" : None,
+      "card_asked_for" : None,
+      "success" : None
+    }
     self.matches = {}
     super().__init__()
 
@@ -114,24 +119,30 @@ class etaGo(fisher):
     self.ihands[pid][card] = 0 # they don't have *this* card though
   
   def request_made(self): # someone asked someone for a card
+    if self.game["last_play"] == {}: return
     asking_pid = self.game["last_play"]["player_asking"]
     asked_pid = self.game["last_play"]["player_asked"]
-    if asking_pid == self.id:
-      self.asking()
-      return
     if self.drew_requested_card():
       card = self.last_play["card_asked_for"] # card drawn last play
       self.ihands_zero([card], self.other_pids(asking_pid))
       self.ihands[asking_pid][card] = 1 # set to known
       self.hand_lengths[asking_pid] += 1
-    if self.last_play["player_asking"] != asking_pid:
-      self.handle_draw(self.last_play["player_asking"])
+    old_asker = self.last_play["player_asking"]
+    if (old_asker != asking_pid) and (old_asker != self.id):
+      self.handle_draw(old_asker)
     
     self.last_play = self.game["last_play"] # otherwise
     card = self.last_play["card_asked_for"]
     [rank, suit] = card.split()
     self.stats["rank_reqs"][rank] += 1 # set is more popular
     
+    if asking_pid == self.id:
+      # you've given away that you're interested in this rank:
+      self.stats["rank_reqs"][rank] -= 6
+      if not self.last_play["success"]: 
+        self.ihand_doesnt_have(card, asked_pid)
+      return
+
     num_known, cards_known = self.rank_known(rank, self.other_pids(asking_pid))
     self.asker_rr(rank, num_known, cards_known, asking_pid)
     self.ihands[asking_pid][card] /= 10 # probably not asking for own card
