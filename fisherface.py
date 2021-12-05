@@ -9,7 +9,8 @@ class fisher:
   HOST = "127.0.0.1"
   PORT = 4444
   NUM_DELT = 7
-  AVGP = -1 # used to represent the "average probability"
+  AVGP = -1 # represents "average probability"
+  UNLIKELYP = 1e-2
   SUITS = ["diams", "spades", "clubs", "hearts"]
 
   def __init__(self):
@@ -88,4 +89,4 @@ class fisher:
 
 # testing
 if __name__ == "__main__":
-  etaGo = fisher()
+  player = fisher()
