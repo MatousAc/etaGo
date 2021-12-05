@@ -10,6 +10,7 @@ class fisher:
   PORT = 4444
   NUM_DELT = 7
   AVGP = -1 # used to represent the "average probability"
+  ID = -1
 
   def __init__(self):
     self.uuid = uuid4() # generate uuid
@@ -43,6 +44,7 @@ class fisher:
       
       if (update != self.game):
         self.game = update
+        if self.ID == -1: self.ID = self.game["p_id"] # set id
         print(self.game)
         self.info["state"] = self.game["state"]
         # handling states
@@ -75,6 +77,8 @@ class fisher:
     return deck
   def avg_prob(self, cards_in_hand):
     pass
+  def other_pids(self, pid = -1):
+    return [id for id in range(0, self["num_players"])].remove(pid)
   # destructor
   def __del__(self):
     # self.sock.close()
