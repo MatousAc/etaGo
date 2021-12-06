@@ -33,6 +33,13 @@ class etaGo(fisher):
   def drew_requested_card(self):
     if self.last_play == {}: return False
     return (self.last_play["player_asking"] == self.game["last_play"]["player_asking"]) and not self.last_play["success"]
+  def print_stats(self):
+    print("####IHANDS####")
+    h.print_dict_list(self.ihands)
+    print("####STATS####")
+    h.print_dict_list([self.stats])
+    print("####HAND_LENGTHS####")
+    print(self.hand_lengths)
 
   def configure_hands(self): # ihands && stats setup
     self.stats["unknown_cards"] -= len(self.game["hand"])
@@ -51,7 +58,6 @@ class etaGo(fisher):
           self.ihands[pid][card] = 1 if (card in self.hand) else 0
 
   def ihands_zero(self, known_cards, pids): # zeroes prob. of cards in hands
-    self.stats["unknown_cards"] -= len(known_cards)
     for pid in pids:
       for card in known_cards:
         self.ihands[pid][card] = 0
@@ -89,6 +95,8 @@ class etaGo(fisher):
         elif prob > avg_prob:
           culm_prob += prob
       count += culm_prob // 1
+    print("####Rank_Known####") # FIXME gives wrong value after player gets a card
+    print(count, cards)
     return count, cards
 
   def asker_rr(self, rank, num_known, cards_known, pid): # rank recalc - worth reviewing logic!
@@ -122,7 +130,6 @@ class etaGo(fisher):
     if self.game["last_play"] == {}: return
     asking_pid = self.game["last_play"]["player_asking"]
     asked_pid = self.game["last_play"]["player_asked"]
-    # if asked_pid != None:
     if self.drew_requested_card():
       card = self.last_play["card_asked_for"] # card drawn last play
       self.ihands_zero([card], self.other_pids(asking_pid))
@@ -148,8 +155,13 @@ class etaGo(fisher):
     self.asker_rr(rank, num_known, cards_known, asking_pid)
     self.ihands[asking_pid][card] /= 10 # probably not asking for own card
     if self.last_play["success"]:
-      self.ihands[asking_pid][card] = 1
+      self.ihands[asking_pid][card] = 1 # asker has it
+      if self.ihands[asked_pid][card] != 1:
+        self.stats["unknown_cards"] -= 1 # becomes known
+      self.ihands[asked_pid][card] = 0 # asked def. doesn't have it
+
       self.ihands_zero([card], self.other_pids(asking_pid))
+      self.hand_lengths[asking_pid] += 1
       self.hand_lengths[asked_pid] -= 1
     else: # remove that card from consideration
       self.ihand_doesnt_have(card, asked_pid)
@@ -169,14 +181,19 @@ class etaGo(fisher):
       self.stats["first_pass"] = False
       self.configure_hands()
       self.stats["match_counts"] = [0] * self.stats["num_players"]
+      self.print_stats()
       return # we assume no more thinking
     # here we change up all the probabilities based on events
     if self.hand != self.game["hand"]: self.hand_change() # useless??
     if self.last_play != self.game["last_play"]: self.request_made()
     if self.matches != self.game["matches"]: self.match_made()
+    self.print_stats()
 
   def play(self):
     print("etaGo playing . . .")
+    self.info["player_asked"] = int(input("enter player to ask (0-3): "))
+    self.info["card_played"] = input("enter card (2 hearts): ")
+
 
 if __name__ == "__main__":
   print(
