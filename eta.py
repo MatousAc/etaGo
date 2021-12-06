@@ -20,7 +20,7 @@ class etaGo(fisher):
       "card_asked_for" : None,
       "success" : None
     }
-    self.matches = {}
+    self.matches = []
     super().__init__()
 
   def avg_prob(self, pid):
@@ -122,13 +122,14 @@ class etaGo(fisher):
     if self.game["last_play"] == {}: return
     asking_pid = self.game["last_play"]["player_asking"]
     asked_pid = self.game["last_play"]["player_asked"]
+    # if asked_pid != None:
     if self.drew_requested_card():
       card = self.last_play["card_asked_for"] # card drawn last play
       self.ihands_zero([card], self.other_pids(asking_pid))
       self.ihands[asking_pid][card] = 1 # set to known
       self.hand_lengths[asking_pid] += 1
     old_asker = self.last_play["player_asking"]
-    if (old_asker != asking_pid) and (old_asker != self.id):
+    if (old_asker not in [asking_pid, self.id, None]):
       self.handle_draw(old_asker)
     
     self.last_play = self.game["last_play"] # otherwise

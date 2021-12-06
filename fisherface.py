@@ -79,7 +79,9 @@ class fisher:
   def avg_prob(self, cards_in_hand):
     pass
   def other_pids(self, pid = -1):
-    return [id for id in range(0, self["num_players"])].remove(pid)
+    ids = [id for id in range(0, self.stats["num_players"])]
+    ids.remove(pid)
+    return ids
   def set(self, rank):
     return [f"{rank} {suit}" for suit in self.SUITS]
   # destructor
