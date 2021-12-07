@@ -21,6 +21,7 @@ class fisher:
       "state"     : state.DISCONNECTED,
       "am_ready"  : False
     }
+    self.hand = []
     self.game = {} # game state
     # make connection
     aio.run(self.connect())
@@ -38,7 +39,14 @@ class fisher:
     self.info["state"] = state.CONNECTED
     input("press enter to signal that you are ready to play") # blocks until ready
     self.info["am_ready"] = True
-    await self.loop()
+    try:
+      await self.loop()
+    except:
+      if self.connections > 10: return # give up
+      print("exception caught. trying again")
+      self.connections += 1
+      self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
+      await self.loop()
 
   async def loop(self):
     while True:
@@ -65,15 +73,7 @@ class fisher:
         elif self.game["state"] == 5: # play
           self.think()
           self.play()
-          try:
-            await self.send()
-          except:
-            if self.connections > 10: return # give up
-            print("exception caught. trying again")
-            self.connections += 1
-            self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
-            self.play()
-            await self.send()
+          await self.send()
         elif self.game["state"] == 6: # end
           pass
         else:
@@ -94,6 +94,13 @@ class fisher:
     return ids
   def set(self, rank):
     return [f"{rank} {suit}" for suit in self.SUITS]
+  def valid_plays(self):
+    plays = []
+    for card in self.hand:
+      if card not in plays: 
+        plays += self.set(card.split()[0])
+      else: plays.remove(card)
+    return plays
   # destructor
   def __del__(self):
     # self.sock.close()

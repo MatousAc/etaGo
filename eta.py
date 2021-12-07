@@ -13,7 +13,6 @@ class etaGo(fisher):
       "rank_reqs" : {f"{r}" : 0 # tracks interest in certain sets
       for r in [n for n in range(2, 11)] + ["j", "q", "k", "a"]}
     }
-    self.hand = []
     self.last_play = {
       "player_asking" : None,
       "player_asked" : None,
