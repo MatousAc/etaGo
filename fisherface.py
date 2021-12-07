@@ -10,7 +10,7 @@ class fisher:
   PORT = 4444
   NUM_DELT = 7
   AVGP = -1 # represents "average probability"
-  UNLIKELYP = 1e-2
+  UNLIKELYP = 5e-3
   SUITS = ["diams", "spades", "clubs", "hearts"]
 
   def __init__(self):
@@ -64,6 +64,7 @@ class fisher:
           self.think()
           self.play()
           await self.send()
+          await self.sock.send("PING") # keep alive?
         elif self.game["state"] == 6: # end
           pass
         else:
