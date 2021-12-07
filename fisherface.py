@@ -33,19 +33,24 @@ class fisher:
 
   async def send(self): # sends info
     await self.sock.send(json.dumps(self.info))
+  async def set_sock(self):
+    self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
 
   async def connect(self):
-    self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
+    await self.set_sock()
     self.info["state"] = state.CONNECTED
-    input("press enter to signal that you are ready to play") # blocks until ready
+    input("press enter to play")
     self.info["am_ready"] = True
     try:
       await self.loop()
     except:
-      if self.connections > 10: return # give up
+      if self.connections > 20: return # give up
       print("exception caught. trying again")
       self.connections += 1
-      self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
+      await self.set_sock()
+      self.info["state"] = state.CONNECTED
+      self.info["am_ready"] = True
+      await self.send() # in case we got stuck on send
       await self.loop()
 
   async def loop(self):
