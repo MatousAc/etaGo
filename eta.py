@@ -1,5 +1,6 @@
 # defines a rule-based agent to play Go Fish
 import json, help as h
+from random import choice
 from fisherface import fisher
 class etaGo(fisher):
   def __init__(self):
@@ -40,7 +41,6 @@ class etaGo(fisher):
       if self.ihands[asked][card] != 1:
         self.stats["unknown_cards"] -= 1 # becomes known
       self.ihands[asked][card] = 0 # asked def. doesn't have it
-
   def print_stats(self):
     print("####IHANDS####")
     h.print_dict_list(self.ihands)
@@ -48,7 +48,6 @@ class etaGo(fisher):
     h.print_dict_list([self.stats])
     print("####HAND_LENGTHS####")
     print(self.hand_lengths)
-
   def configure_hands(self): # ihands && stats setup
     self.stats["unknown_cards"] -= len(self.game["hand"])
     self.stats["num_players"] = len(self.game["other_hands"]) + 1
@@ -65,6 +64,7 @@ class etaGo(fisher):
         for card in self.ihands[pid]: # our id - set all our probs
           self.ihands[pid][card] = 1 if (card in self.hand) else 0
 
+## thinking ##
   def ihands_zero(self, known_cards, pids): # zeroes prob. of cards in hands
     for pid in pids:
       for card in known_cards:
@@ -199,14 +199,34 @@ class etaGo(fisher):
     if self.matches != self.game["matches"]: self.match_made()
     self.print_stats()
 
+## playing ##
+  def best_choice(self, choices):
+    best = []
+    best_prob = 0
+    for pid in self.other_pids(self.id):
+      for card in choices:
+        prob = self.ihands[pid][card]
+        if prob > best_prob:
+          best = [[pid, card]]
+          best_prob = prob
+        elif h.eq(prob, best_prob):
+          best.append([pid, card])
+    return best
+
   def play(self):
     # choose the cards you can ask for
+    choices = self.valid_plays()
+    print(f"choices: {choices}")
     # choose highest probabilities of those cards and keep track of who has them
+    best = self.best_choice(choices)
+    print(f"best: {best}")
     # ask them for that card
-    self.info["player_asked"] = int(input("enter player to ask (0-3): "))
-    self.info["card_played"] = input("enter card (2 hearts): ")
-    pass
-
+    pid, card = choice(best)
+    
+    # set
+    self.info["player_asked"] = pid
+    self.info["card_played"] = card
+    
 
 if __name__ == "__main__":
   print(
