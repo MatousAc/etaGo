@@ -204,6 +204,8 @@ class etaGo(fisher):
     # choose the cards you can ask for
     # choose highest probabilities of those cards and keep track of who has them
     # ask them for that card
+    self.info["player_asked"] = int(input("enter player to ask (0-3): "))
+    self.info["card_played"] = input("enter card (2 hearts): ")
     pass
 
 

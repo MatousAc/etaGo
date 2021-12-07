@@ -16,6 +16,7 @@ class fisher:
   def __init__(self):
     self.uuid = uuid4() # generate uuid
     self.id = -1
+    self.connections = 0
     self.info = { # keeps track of client info
       "state"     : state.DISCONNECTED,
       "am_ready"  : False
@@ -28,16 +29,17 @@ class fisher:
     pass
   def play(self): # chooses a player and card
     pass
+
   async def send(self): # sends info
     await self.sock.send(json.dumps(self.info))
-  # connects to sever
+
   async def connect(self):
     self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
     self.info["state"] = state.CONNECTED
     input("press enter to signal that you are ready to play") # blocks until ready
     self.info["am_ready"] = True
     await self.loop()
-    # keeps agent playing
+
   async def loop(self):
     while True:
       await self.sock.send("PING")
@@ -63,8 +65,15 @@ class fisher:
         elif self.game["state"] == 5: # play
           self.think()
           self.play()
-          await self.send()
-          await self.sock.send("PING") # keep alive?
+          try:
+            await self.send()
+          except:
+            if self.connections > 10: return # give up
+            print("exception caught. trying again")
+            self.connections += 1
+            self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
+            self.play()
+            await self.send()
         elif self.game["state"] == 6: # end
           pass
         else:
