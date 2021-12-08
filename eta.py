@@ -191,19 +191,21 @@ class etaGo(fisher):
       self.stats["first_pass"] = False
       self.configure_hands()
       self.stats["match_counts"] = [0] * self.stats["num_players"]
-      self.print_stats()
       return # we assume no more thinking
     # here we change up all the probabilities based on events
     if self.hand != self.game["hand"]: self.hand_change() # useless??
     if self.last_play != self.game["last_play"]: self.request_made()
     if self.matches != self.game["matches"]: self.match_made()
-    self.print_stats()
 
-## playing ##
-  def best_choice(self, choices):
+  ## playing ##
+  
+  def high_prob_plays(self, choices):
     best = []
-    best_prob = 0
+    best_prob = self.avg_prob(0) # FIXME
+    # choose highest prob
     for pid in self.other_pids(self.id):
+      avg_prob = self.avg_prob(pid)
+      if avg_prob > best_prob: best_prob = avg_prob
       for card in choices:
         prob = self.ihands[pid][card]
         if prob > best_prob:
@@ -211,18 +213,50 @@ class etaGo(fisher):
           best_prob = prob
         elif h.eq(prob, best_prob):
           best.append([pid, card])
-    return best
+    if not best: # choose randomly if all avg prob
+      print("random choice")
+      return [[pid, card] 
+        for card in choices 
+        for pid in self.other_pids(self.id)]
+    else: return best
+
+  def top_interest_in(self, options):
+    ranks = {} # what are my interests?
+    rank = ""
+    for card in self.hand:
+      rank = card.split()[0]
+      if rank in ranks.keys():
+        ranks[rank] += 1
+      else:
+        ranks[rank] = 1
+    interest_ranks = []
+    interest_freq = 0
+    for r, freq in ranks.items():
+      if freq > interest_freq:
+        interest_freq = freq
+        interest_ranks = [r]
+      elif freq == interest_freq:
+        interest_ranks.append(r)
+    # out of my options, which am i most interested in?
+    temp = []
+    for pid, card in options:
+      if card.split()[0] in interest_ranks:
+        temp.append([pid, card])
+    return temp if temp else options
 
   def play(self):
     # choose the cards you can ask for
     choices = self.valid_plays()
-    print(f"choices: {choices}")
-    # choose highest probabilities of those cards and keep track of who has them
-    best = self.best_choice(choices)
-    print(f"best: {best}")
+    # print(f"choices: {choices}")
+    # choose highest probabilities of cards and players
+    best = self.high_prob_plays(choices)
+    # print(f"highest probs: {best}")
+    # choose the rank you need most
+    best = self.top_interest_in(best)
+    # print(f"highest interest: {best}")
     # ask them for that card
     pid, card = choice(best)
-    
+    print(f"asked {pid} for {card}")
     # set
     self.info["player_asked"] = pid
     self.info["card_played"] = card

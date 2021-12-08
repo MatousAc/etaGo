@@ -32,6 +32,7 @@ class fisher:
     pass
 
   async def send(self): # sends info
+    print("sending...")
     await self.sock.send(json.dumps(self.info))
   async def set_sock(self):
     self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
@@ -41,11 +42,12 @@ class fisher:
     self.info["state"] = state.CONNECTED
     input("press enter to play")
     self.info["am_ready"] = True
+    # await self.loop()
     try:
       await self.loop()
-    except:
+    except Exception as e:
       if self.connections > 20: return # give up
-      print("exception caught. trying again")
+      print(f"exception caught:\n{e}")
       self.connections += 1
       await self.set_sock()
       self.info["state"] = state.CONNECTED
@@ -104,6 +106,7 @@ class fisher:
     for card in self.hand:
       if card not in plays: 
         plays += self.set(card.split()[0])
+        plays.remove(card)
       else: plays.remove(card)
     return plays
   # destructor
