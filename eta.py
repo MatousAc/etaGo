@@ -3,6 +3,7 @@ import json, help as h
 from random import choice
 from fisherface import fisher
 class etaGo(fisher):
+  NAME = "etaGo"
   def __init__(self):
     self.ihands = [] # imagined hands
     self.hand_lengths = []

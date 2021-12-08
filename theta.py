@@ -2,7 +2,7 @@
 from fisherface import fisher
 from random import choice
 
-class rhoGo(fisher):
+class thetaGo(fisher):
   def play(self): # chooses a player and card
     self.hand = self.game["hand"]
     self.stats = {"num_players" : len(self.game["other_hands"]) + 1}
@@ -10,4 +10,4 @@ class rhoGo(fisher):
     self.info["card_played"] = choice(self.valid_plays())
 
 if __name__ == "__main__":
-  player = rhoGo()
+  player = thetaGo()
