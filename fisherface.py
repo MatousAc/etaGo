@@ -46,7 +46,7 @@ class fisher:
     try:
       await self.loop()
     except Exception as e:
-      if self.connections > 20: return # give up
+      if self.connections > 40: return # give up
       print(f"exception caught:\n{e}")
       self.connections += 1
       await self.set_sock()
