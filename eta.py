@@ -247,7 +247,6 @@ class etaGo(fisher):
   def play(self):
     # choose the cards you can ask for
     choices = self.valid_plays()
-    # print(f"choices: {choices}")
     # choose highest probabilities of cards and players
     best = self.high_prob_plays(choices)
     # print(f"highest probs: {best}")

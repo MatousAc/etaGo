@@ -6,8 +6,8 @@ import random, json, time
 
 class fisher:
   # static
-  HOST = "127.0.0.1"
-  PORT = 4444
+  HOST = "10.14.2.1" #127.0.0.1"
+  PORT = 10000 #4444
   NUM_DELT = 7
   AVGP = -1 # represents "average probability"
   UNLIKELYP = 5e-3
@@ -63,7 +63,7 @@ class fisher:
       if (update != self.game):
         self.game = update
         if self.id == -1: self.id = self.game["p_id"] # set id
-        print(self.game)
+        # print(self.game)
         self.info["state"] = self.game["state"]
         # handling states
         if self.game["state"] == 1: # restart
