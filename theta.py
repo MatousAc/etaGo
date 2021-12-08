@@ -3,6 +3,7 @@ from fisherface import fisher
 from random import choice
 
 class thetaGo(fisher):
+  NAME = "thetaGo"
   def play(self): # chooses a player and card
     self.hand = self.game["hand"]
     self.stats = {"num_players" : len(self.game["other_hands"]) + 1}

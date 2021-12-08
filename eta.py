@@ -1,6 +1,7 @@
 # defines a rule-based agent to play Go Fish
 import json, help as h
 from random import choice
+from states import state
 from fisherface import fisher
 class etaGo(fisher):
   NAME = "etaGo"
@@ -43,12 +44,27 @@ class etaGo(fisher):
         self.stats["unknown_cards"] -= 1 # becomes known
       self.ihands[asked][card] = 0 # asked def. doesn't have it
   def print_stats(self):
-    print("####IHANDS####")
-    h.print_dict_list(self.ihands)
-    print("####STATS####")
-    h.print_dict_list([self.stats])
-    print("####HAND_LENGTHS####")
-    print(self.hand_lengths)
+    print(f"_____I'm {self.NAME} and I know______")
+    for pid in self.other_pids(self.id):
+      has, has_not, might_have = [], [], {}
+      for card, prob in self.ihands[pid].items():
+        if h.eq(1, prob): has.append(card)
+        elif h.eq(0, prob): has_not.append(card)
+        elif not h.eq(-1, prob): might_have[card] = prob
+      print(f"----Player {pid}----")
+      print(f"-has: ")
+      print(*has)
+      print(f"-doesn't have: ")
+      print(*has_not)
+      print(f"-and maybe has:")
+      for card, prob in might_have.items():
+        print(f"{card}:{h.truncate(prob, 4)}")
+      print("")
+
+    if self.game["state"] == state.PLAYING: 
+      print(f"so I am asking player {self.info['player_asked']}",
+        f" for {self.info['card_played']}")
+
   def configure_hands(self): # ihands && stats setup
     self.stats["unknown_cards"] -= len(self.game["hand"])
     self.stats["num_players"] = len(self.game["other_hands"]) + 1
@@ -82,12 +98,13 @@ class etaGo(fisher):
       self.ihands_zero(old_cards, [self.id])
 
   def handle_draw(self, pid): # increases likeliness
+    if sum(self.hand_lengths) >= 52: return # no drawpile
     self.hand_lengths[pid] += 1
     avg_prob = self.avg_prob(pid)
     for card in self.ihands[pid].keys():
       # we don't affect cards set to 0 on purpose
       if 0 < self.ihands[pid][card] < (avg_prob * 0.9):
-        self.ihands[pid][card] += avg_prob / 10
+        self.ihands[pid][card] += avg_prob / 6
         if (avg_prob * 0.9) < self.ihands[pid][card] < (avg_prob * 1.2):
           self.ihands[pid][card] = self.AVGP # return to avg (?)
 
@@ -177,15 +194,29 @@ class etaGo(fisher):
       self.ihand_has_not(card, asked_pid)
       self.handle_draw(asking_pid)
 
+  def czech_for_win(self):
+    for pid, matche_count in self.stats["match_counts"]:
+      if matche_count >= 4:
+        print(f"######Player {pid} won!!######")
+
   def match_made(self):
+    new_matches = []
     for match in self.game["matches"]:
       if match not in self.matches:
-        [pid, rank] = match # found new match
-        break
-    self.matches == self.game["matches"]
-    self.stats["match_counts"][pid] += 1
-    self.hand_lengths[pid] -= 4
-    self.ihands_zero(self.set(rank), range(self.stats["num_players"]))
+        new_matches.append(match) # found new match
+    # pull all of the card out of the game
+    print(f"new matches: {new_matches}")
+    for pid, rank in new_matches:
+      self.stats["match_counts"][pid] += 1
+      self.hand_lengths[pid] -= 4
+      self.ihands_zero(self.set(rank), range(self.stats["num_players"]))
+      # adjust your hand
+      if self.id == pid: # may be useless (?)
+        for card in self.set(rank):
+          print(f"card to remove: {card}")
+          if card in self.hand: self.hand.remove(card)
+    self.matches += new_matches
+    self.czech_for_win()
 
   def think(self):
     if self.stats["first_pass"]:
@@ -197,6 +228,7 @@ class etaGo(fisher):
     if self.hand != self.game["hand"]: self.hand_change() # useless??
     if self.last_play != self.game["last_play"]: self.request_made()
     if self.matches != self.game["matches"]: self.match_made()
+    # if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
 
   ## playing ##
   
@@ -248,19 +280,20 @@ class etaGo(fisher):
   def play(self):
     # choose the cards you can ask for
     choices = self.valid_plays()
+    print(f"hand: {self.hand}\nchoices: {choices}")
     # choose highest probabilities of cards and players
-    best = self.high_prob_plays(choices)
-    # print(f"highest probs: {best}")
+    strategy = self.high_prob_plays(choices)
+    print(f"highest probs: {strategy}")
     # choose the rank you need most
-    best = self.top_interest_in(best)
-    # print(f"highest interest: {best}")
+    strategy = self.top_interest_in(strategy)
+    print(f"highest interest: {strategy}")
     # ask them for that card
-    pid, card = choice(best)
-    print(f"asked {pid} for {card}")
+    pid, card = choice(strategy)
     # set
     self.info["player_asked"] = pid
     self.info["card_played"] = card
-    
+    # log
+    self.print_stats()
 
 if __name__ == "__main__":
   print(
