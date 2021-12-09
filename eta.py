@@ -211,16 +211,13 @@ class etaGo(fisher):
       if match not in self.matches:
         new_matches.append(match) # found new match
     # pull all of the card out of the game
-    print(f"new matches: {new_matches}")
     for pid, rank in new_matches:
-      print(f"p: {pid} r: {rank}")
       self.stats["match_counts"][pid] += 1
       self.hand_lengths[pid] -= 4
       self.ihands_zero(self.set(rank), range(self.stats["num_players"]))
       # take out of your hand (nesc)
       if self.id == pid:
         for card in self.set(rank):
-          print(f"card to remove: {card}")
           if card in self.hand: self.hand.remove(card)
     self.matches += new_matches
     self.czech_for_win()
@@ -235,7 +232,7 @@ class etaGo(fisher):
     if self.hand != self.game["hand"]: self.hand_change() # useless??
     if self.last_play != self.game["last_play"]: self.request_made()
     if self.matches != self.game["matches"]: self.match_made()
-    if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
+    # if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
 
   ## playing ##
   
@@ -286,23 +283,26 @@ class etaGo(fisher):
 
   def play(self): # playing w/ strategy
     # log
-    self.print_stats()
-
+    # self.print_stats()
     choices = self.valid_plays()
-    print(f"hand: {self.hand}\nchoices: {choices}")
+    # print(f"hand: {self.hand}\nchoices: {choices}")
     # choose highest probabilities of cards and players
     strategy = self.prob_filter(choices)
-    print(f"highest probs: {strategy}")
-    # choose the rank you need most
+    # certainty first strategy FIXME
+
+    # print(f"highest probs: {strategy}")
+    # choose the rank you need most FIXME we don't want this
     strategy = self.interest_filter(strategy)
-    print(f"highest interest: {strategy}")
+    # print(f"highest interest: {strategy}")
+    # get secrecy strategy FIXME
+
     # ask them for that card
     pid, card = choice(strategy)
     # set
     self.info["player_asked"] = pid
     self.info["card_played"] = card
 
-    print(f"so I am asking player {self.info['player_asked']}",
+    print(f"I am asking player {self.info['player_asked']}",
       f" for {self.info['card_played']}")
 
 if __name__ == "__main__":
