@@ -44,7 +44,7 @@ class etaGo(fisher):
         self.stats["unknown_cards"] -= 1 # becomes known
       self.ihands[asked][card] = 0 # asked def. doesn't have it
   def print_stats(self):
-    print(f"_____I'm {self.NAME} and I know______")
+    print(f"_____________________I'm {self.NAME} and I know_____________________")
     for pid in self.other_pids(self.id):
       has, has_not, might_have = [], [], {}
       for card, prob in self.ihands[pid].items():
@@ -54,16 +54,16 @@ class etaGo(fisher):
       print(f"----Player {pid}----")
       print(f"-has: ")
       print(*has)
-      print(f"-doesn't have: ")
-      print(*has_not)
-      print(f"-and maybe has:")
+      print(f"-maybe has:")
       for card, prob in might_have.items():
         print(f"{card}:{h.truncate(prob, 4)}")
       print("")
+      print(f"-and doesn't have: ")
+      print(*has_not)
 
-    if self.game["state"] == state.PLAYING: 
-      print(f"so I am asking player {self.info['player_asked']}",
-        f" for {self.info['card_played']}")
+    print(f"# unknown cards: {self.stats['unknown_cards']}")
+    print(f"# rank reqs: {self.stats['rank_reqs']}")
+    print(f"# match counts: {self.stats['match_counts']}")
 
   def configure_hands(self): # ihands && stats setup
     self.stats["unknown_cards"] -= len(self.game["hand"])
@@ -104,7 +104,7 @@ class etaGo(fisher):
     for card in self.ihands[pid].keys():
       # we don't affect cards set to 0 on purpose
       if 0 < self.ihands[pid][card] < (avg_prob * 0.9):
-        self.ihands[pid][card] += avg_prob / 6
+        self.ihands[pid][card] += avg_prob / 15
         if (avg_prob * 0.9) < self.ihands[pid][card] < (avg_prob * 1.2):
           self.ihands[pid][card] = self.AVGP # return to avg (?)
 
@@ -129,7 +129,7 @@ class etaGo(fisher):
       cards_known.append(self.last_play["card_asked_for"])
     return count, cards_known
 
-  def asker_rr(self, rank, num_known, cards_known, pid): # rank recalc FIXME
+  def asker_rr(self, rank, num_known, cards_known, pid): # rank recalc FIXME?
     set = self.set(rank)
     for card in set:
       prob = self.ihands[pid][card]
@@ -166,7 +166,7 @@ class etaGo(fisher):
     
     self.last_play = self.game["last_play"] # otherwise
     card = self.last_play["card_asked_for"]
-    [rank, suit] = card.split()
+    rank, suit = card.split()
     self.stats["rank_reqs"][rank] += 1 # set is more popular
     
     if asking_pid == self.id:
@@ -178,6 +178,7 @@ class etaGo(fisher):
           self.stats["unknown_cards"] -= 1
         self.ihands[asked_pid][card] = 0
         self.hand_exchange(self.id, asked_pid)
+        self.hand.append(card)
       else:
         self.ihand_has_not(card, asked_pid)
         self.hand_lengths[self.id] += 1
@@ -190,14 +191,19 @@ class etaGo(fisher):
       self.success_prob_shift(asking_pid, asked_pid, card)
       self.ihands_zero([card], self.other_pids(asking_pid))
       self.hand_exchange(asking_pid, asked_pid)
+      if card in self.hand: self.hand.remove(card)
     else: # remove card from consideration
       self.ihand_has_not(card, asked_pid)
       self.handle_draw(asking_pid)
 
   def czech_for_win(self):
-    for pid, matche_count in self.stats["match_counts"]:
-      if matche_count >= 4:
-        print(f"######Player {pid} won!!######")
+    for match_count in self.stats["match_counts"]:
+      if match_count >= 2:
+        pid = self.stats['match_counts'].index(match_count)
+        if pid == self.id:
+          self.won()
+        else:
+          self.lost(pid)
 
   def match_made(self):
     new_matches = []
@@ -207,11 +213,12 @@ class etaGo(fisher):
     # pull all of the card out of the game
     print(f"new matches: {new_matches}")
     for pid, rank in new_matches:
+      print(f"p: {pid} r: {rank}")
       self.stats["match_counts"][pid] += 1
       self.hand_lengths[pid] -= 4
       self.ihands_zero(self.set(rank), range(self.stats["num_players"]))
-      # adjust your hand
-      if self.id == pid: # may be useless (?)
+      # take out of your hand (nesc)
+      if self.id == pid:
         for card in self.set(rank):
           print(f"card to remove: {card}")
           if card in self.hand: self.hand.remove(card)
@@ -228,13 +235,13 @@ class etaGo(fisher):
     if self.hand != self.game["hand"]: self.hand_change() # useless??
     if self.last_play != self.game["last_play"]: self.request_made()
     if self.matches != self.game["matches"]: self.match_made()
-    # if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
+    if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
 
   ## playing ##
   
-  def high_prob_plays(self, choices):
+  def prob_filter(self, choices):
     best = []
-    best_prob = self.avg_prob(0) # FIXME
+    best_prob = self.avg_prob(0)
     # choose highest prob
     for pid in self.other_pids(self.id):
       avg_prob = self.avg_prob(pid)
@@ -253,7 +260,7 @@ class etaGo(fisher):
         for pid in self.other_pids(self.id)]
     else: return best
 
-  def top_interest_in(self, options):
+  def interest_filter(self, options):
     ranks = {} # what are my interests?
     rank = ""
     for card in self.hand:
@@ -277,23 +284,26 @@ class etaGo(fisher):
         temp.append([pid, card])
     return temp if temp else options
 
-  def play(self):
-    # choose the cards you can ask for
+  def play(self): # playing w/ strategy
+    # log
+    self.print_stats()
+
     choices = self.valid_plays()
     print(f"hand: {self.hand}\nchoices: {choices}")
     # choose highest probabilities of cards and players
-    strategy = self.high_prob_plays(choices)
+    strategy = self.prob_filter(choices)
     print(f"highest probs: {strategy}")
     # choose the rank you need most
-    strategy = self.top_interest_in(strategy)
+    strategy = self.interest_filter(strategy)
     print(f"highest interest: {strategy}")
     # ask them for that card
     pid, card = choice(strategy)
     # set
     self.info["player_asked"] = pid
     self.info["card_played"] = card
-    # log
-    self.print_stats()
+
+    print(f"so I am asking player {self.info['player_asked']}",
+      f" for {self.info['card_played']}")
 
 if __name__ == "__main__":
   print(
