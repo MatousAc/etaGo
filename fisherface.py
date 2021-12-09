@@ -10,7 +10,7 @@ class fisher:
   PORT = 10000 #4444
   NUM_DELT = 7
   AVGP = -1 # represents "average probability"
-  UNLIKELYP = 2e-4
+  UNLIKELYP = 5e-5
   SUITS = ["diams", "spades", "clubs", "hearts"]
 
   def __init__(self):
@@ -42,7 +42,6 @@ class fisher:
     self.info["state"] = state.CONNECTED
     input("press enter to play")
     self.info["am_ready"] = True
-    # await self.loop()
     try:
       await self.loop()
     except Exception as e:
@@ -63,7 +62,7 @@ class fisher:
       if (update != self.game):
         self.game = update
         if self.id == -1: self.id = self.game["p_id"] # set id
-        # print(self.game)
+        print(self.game)
         self.info["state"] = self.game["state"]
         # handling states
         if self.game["state"] == 1: # restart
@@ -110,6 +109,12 @@ class fisher:
         plays.remove(card)
       else: plays.remove(card)
     return plays
+  def won(self):
+    print("          _______                      _______  _       |\     /|(  ___  )|\     /|  |\     /|(  ___  )( (    /|( \   / )| (   ) || )   ( |  | )   ( || (   ) ||  \  ( | \ (_) / | |   | || |   | |  | | _ | || |   | ||   \ | |  \   /  | |   | || |   | |  | |( )| || |   | || (\ \) |   ) (   | |   | || |   | |  | || || || |   | || | \   |   | |   | (___) || (___) |  | () () || (___) || )  \  |   \_/   (_______)(_______)  (_______)(_______)|/    )_)")
+  def lost(self, winner):
+    print("          _______             _        _______  _______  _______ |\     /|(  ___  )|\     /|  ( \      (  ___  )(  ____ \(  ____ \( \   / )| (   ) || )   ( |  | (      | (   ) || (    \/| (    \/ \ (_) / | |   | || |   | |  | |      | |   | || (_____ | (__      \   /  | |   | || |   | |  | |      | |   | |(_____  )|  __)      ) (   | |   | || |   | |  | |      | |   | |      ) || (         | |   | (___) || (___) |  | (____/\| (___) |/\____) || (____/\   \_/   (_______)(_______)  (_______/(_______)\_______)(_______/")
+    print(f"Player {winner} won!")
+
   # destructor
   def __del__(self):
     # self.sock.close()
