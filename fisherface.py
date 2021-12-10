@@ -8,9 +8,12 @@ class fisher:
   # static
   HOST = "10.14.2.1" #127.0.0.1"
   PORT = 10000 #4444
+  # use this to ssh:
+  # ssh -p 2224 ac@10.14.2.1
   NUM_DELT = 7
   AVGP = -1 # represents "average probability"
   UNLIKELYP = 5e-5
+  MATCHES_TO_WIN = 7
   SUITS = ["diams", "spades", "clubs", "hearts"]
 
   def __init__(self):
@@ -30,9 +33,14 @@ class fisher:
     pass
   def play(self): # chooses a player and card
     pass
-
+  def end_game(self):
+    self.info["state"] = state.END_OF_GAME
+  def out(self):
+    print("          _______             _        _______  _______  _______  _ \n|\     /|(  ___  )|\     /|  ( \      (  ___  )(  ____ \(  ____ \( )\n( \   / )| (   ) || )   ( |  | (      | (   ) || (    \/| (    \/| |\n \ (_) / | |   | || |   | |  | |      | |   | || (_____ | (__    | |\n  \   /  | |   | || |   | |  | |      | |   | |(_____  )|  __)   | |\n   ) (   | |   | || |   | |  | |      | |   | |      ) || (      (_)\n   | |   | (___) || (___) |  | (____/\| (___) |/\____) || (____/\ _ \n   \_/   (_______)(_______)  (_______/(_______)\_______)(_______/(_)\n")
+    print("no more cards")
+    self.info["state"] = state.END_OF_GAME
+  
   async def send(self): # sends info
-    print("sending...")
     await self.sock.send(json.dumps(self.info))
   async def set_sock(self):
     self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
@@ -42,17 +50,18 @@ class fisher:
     self.info["state"] = state.CONNECTED
     input("press enter to play")
     self.info["am_ready"] = True
-    try:
-      await self.loop()
-    except Exception as e:
-      if self.connections > 40: return # give up
-      print(f"exception caught:\n{e}")
-      self.connections += 1
-      await self.set_sock()
-      self.info["state"] = state.CONNECTED
-      self.info["am_ready"] = True
-      await self.send() # in case we got stuck on send
-      await self.loop()
+    await self.loop()
+    # try:
+    #   await self.loop()
+    # except Exception as e:
+    #   if self.connections > 40: return # give up
+    #   print(f"exception caught:\n{e}")
+    #   self.connections += 1
+    #   await self.set_sock()
+    #   self.info["state"] = state.CONNECTED
+    #   self.info["am_ready"] = True
+    #   await self.send() # in case we got stuck on send
+    #   await self.loop()
 
   async def loop(self):
     while True:
@@ -62,27 +71,29 @@ class fisher:
       if (update != self.game):
         self.game = update
         if self.id == -1: self.id = self.game["p_id"] # set id
-        # print(self.game)
+        print(f"\n\n\nself.game['hand']: {self.game['hand']}")
         self.info["state"] = self.game["state"]
         # handling states
-        if self.game["state"] == 1: # restart
+        state = self.game["state"]
+        if state == 1: # restart
           await self.send()
-        elif (self.game["state"] == 2): # revert
+        elif (state == 2): # revert
           await self.send()
           # self.info["am_ready"] = False
           # self.info["state"] = state.CONNECTED
           # await self.send()
           # input("press enter to signal that you are ready to play") # blocks until ready
           # self.info["am_ready"] = True          
-        elif self.game["state"] in [3,4]: # update info
+        elif state in [3,4]: # update info
           self.think()
-        elif self.game["state"] == 5: # play
-          time.sleep(2)
+        elif state == 5: # play
+          time.sleep(0.1)
           self.think()
+          if self.info["state"] == 6: break
           self.play()
           await self.send()
-        elif self.game["state"] == 6: # end
-          pass
+        elif state == 6: # end
+          break
         else:
           print("invalid or disconnected state returned")
       time.sleep(1)
@@ -97,7 +108,7 @@ class fisher:
     pass
   def other_pids(self, pid = -1):
     ids = [id for id in range(0, self.stats["num_players"])]
-    ids.remove(pid)
+    if pid != -1: ids.remove(pid)
     return ids
   def set(self, rank):
     return [f"{rank} {suit}" for suit in self.SUITS]
@@ -110,11 +121,10 @@ class fisher:
       else: plays.remove(card)
     return plays
   def won(self):
-    pass
-    # print("          _______                      _______  _       |\     /|(  ___  )|\     /|  |\     /|(  ___  )( (    /|( \   / )| (   ) || )   ( |  | )   ( || (   ) ||  \  ( | \ (_) / | |   | || |   | |  | | _ | || |   | ||   \ | |  \   /  | |   | || |   | |  | |( )| || |   | || (\ \) |   ) (   | |   | || |   | |  | || || || |   | || | \   |   | |   | (___) || (___) |  | () () || (___) || )  \  |   \_/   (_______)(_______)  (_______)(_______)|/    )_)")
+    print("          _______                      _______  _        _ \n|\     /|(  ___  )|\     /|  |\     /|(  ___  )( (    /|( )\n( \   / )| (   ) || )   ( |  | )   ( || (   ) ||  \  ( || |\n \ (_) / | |   | || |   | |  | | _ | || |   | ||   \ | || |\n  \   /  | |   | || |   | |  | |( )| || |   | || (\ \) || |\n   ) (   | |   | || |   | |  | || || || |   | || | \   |(_)\n   | |   | (___) || (___) |  | () () || (___) || )  \  | _ \n   \_/   (_______)(_______)  (_______)(_______)|/    )_)(_)\n")
   def lost(self, winner):
     pass
-    # print("          _______             _        _______  _______  _______ |\     /|(  ___  )|\     /|  ( \      (  ___  )(  ____ \(  ____ \( \   / )| (   ) || )   ( |  | (      | (   ) || (    \/| (    \/ \ (_) / | |   | || |   | |  | |      | |   | || (_____ | (__      \   /  | |   | || |   | |  | |      | |   | |(_____  )|  __)      ) (   | |   | || |   | |  | |      | |   | |      ) || (         | |   | (___) || (___) |  | (____/\| (___) |/\____) || (____/\   \_/   (_______)(_______)  (_______/(_______)\_______)(_______/")
+    print("          _______             _        _______  _______  _______  _ \n|\     /|(  ___  )|\     /|  ( \      (  ___  )(  ____ \(  ____ \( )\n( \   / )| (   ) || )   ( |  | (      | (   ) || (    \/| (    \/| |\n \ (_) / | |   | || |   | |  | |      | |   | || (_____ | (__    | |\n  \   /  | |   | || |   | |  | |      | |   | |(_____  )|  __)   | |\n   ) (   | |   | || |   | |  | |      | |   | |      ) || (      (_)\n   | |   | (___) || (___) |  | (____/\| (___) |/\____) || (____/\ _ \n   \_/   (_______)(_______)  (_______/(_______)\_______)(_______/(_)\n")
     print(f"Player {winner} won!")
 
   # destructor

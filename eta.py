@@ -1,6 +1,6 @@
 # defines a rule-based agent to play Go Fish
 import json, help as h
-from random import choice
+from random import choice, random
 from states import state
 from fisherface import fisher
 class etaGo(fisher):
@@ -14,7 +14,8 @@ class etaGo(fisher):
       "first_pass"    : True,
       "match_counts" :[],
       "rank_reqs" : {f"{r}" : 0 # tracks interest in certain sets
-      for r in [n for n in range(2, 11)] + ["j", "q", "k", "a"]}
+        for r in [n for n in range(2, 11)] + ["j", "q", "k", "a"]},
+      "certain_cards" : []
     }
     self.last_play = {
       "player_asking" : None,
@@ -40,7 +41,7 @@ class etaGo(fisher):
     self.hand_lengths[asked] -= 1
   def success_prob_shift(self, asking, asked, card):
       self.ihands[asking][card] = 1 # asker has it
-      if self.ihands[asked][card] != 1:
+      if not h.eq(1, self.ihands[asked][card]):
         self.stats["unknown_cards"] -= 1 # becomes known
       self.ihands[asked][card] = 0 # asked def. doesn't have it
   def print_stats(self):
@@ -96,6 +97,7 @@ class etaGo(fisher):
     else: # if we lost a card
       old_cards = list(set(self.hand) - set(self.game["hand"]))
       self.ihands_zero(old_cards, [self.id])
+    self.hand = self.game["hand"] # brute force update
 
   def handle_draw(self, pid): # increases likeliness
     if sum(self.hand_lengths) >= 52: return # no drawpile
@@ -105,8 +107,10 @@ class etaGo(fisher):
       # we don't affect cards set to 0 on purpose
       if 0 < self.ihands[pid][card] < (avg_prob * 0.9):
         self.ihands[pid][card] += avg_prob / 15
-        if (avg_prob * 0.9) < self.ihands[pid][card] < (avg_prob * 1.2):
+        if (avg_prob * 0.8) < self.ihands[pid][card] < (avg_prob * 1.3):
           self.ihands[pid][card] = self.AVGP # return to avg (?)
+    if pid == self.id: # add the card to your hand
+      self.hand == self.game["hand"]
 
   def rank_known(self, rank, pids):
     count = 0
@@ -140,7 +144,7 @@ class etaGo(fisher):
       elif prob == self.AVGP: # if we have no info on it yet
         self.ihands[pid][card] = 1 / (4 - num_known)
 
-  def ihand_has_not(self, absent_card, pid, new_prob = 0):
+  def ihand_unlikely(self, absent_card, pid, new_prob = 1e-7):
     culm_prob = 0
     cards_above_avg = []
     avg_prob = self.avg_prob(pid)
@@ -154,56 +158,54 @@ class etaGo(fisher):
         self.ihands[pid][card] = 1 / len(cards_above_avg)
     self.ihands[pid][absent_card] = new_prob # don't have abs_card tho
   
-  def request_made(self): # someone asked someone for a card
+  def request_made(self): 
     if self.game["last_play"] == {}: return
+    # if requested card was drawn:
     asking_pid = self.game["last_play"]["player_asking"]
     asked_pid = self.game["last_play"]["player_asked"]
     if self.drew_requested_card():
       card = self.last_play["card_asked_for"] # card drawn last play
       self.ihands_zero([card], self.other_pids(asking_pid))
       self.ihands[asking_pid][card] = 1 # set to known
+      self.stats["unknown_cards"] -= 1
       self.hand_lengths[asking_pid] += 1
     
     self.last_play = self.game["last_play"] # otherwise
-    card = self.last_play["card_asked_for"]
-    rank, suit = card.split()
+    card = self.game["last_play"]["card_asked_for"]
+    rank = card.split()[0]
     self.stats["rank_reqs"][rank] += 1 # set is more popular
     
     if asking_pid == self.id:
       # you've given away that you're interested in this rank:
-      self.stats["rank_reqs"][rank] -= 6
+      self.stats["rank_reqs"][rank] -= 7
       if self.last_play["success"]:
-        self.ihands[self.id][card] = 1
-        if self.ihands[asked_pid][card] != 1:
-          self.stats["unknown_cards"] -= 1
-        self.ihands[asked_pid][card] = 0
+        self.success_prob_shift(self.id, asked_pid, card)
         self.hand_exchange(self.id, asked_pid)
-        self.hand.append(card)
       else:
-        self.ihand_has_not(card, asked_pid)
+        self.ihand_unlikely(card, asked_pid)
         self.hand_lengths[self.id] += 1
       return
 
     num_known, cards_known = self.rank_known(rank, self.other_pids(asking_pid))
     self.asker_rr(rank, num_known, cards_known, asking_pid)
-    self.ihand_has_not(card, asking_pid, self.UNLIKELYP) # prob. not asking for own card
+    self.ihand_unlikely(card, asking_pid, self.UNLIKELYP) # prob. not asking for own card
     if self.last_play["success"]:
       self.success_prob_shift(asking_pid, asked_pid, card)
       self.ihands_zero([card], self.other_pids(asking_pid))
       self.hand_exchange(asking_pid, asked_pid)
-      if card in self.hand: self.hand.remove(card)
     else: # remove card from consideration
-      self.ihand_has_not(card, asked_pid)
+      self.ihand_unlikely(card, asked_pid)
       self.handle_draw(asking_pid)
 
   def czech_for_win(self):
     for match_count in self.stats["match_counts"]:
-      if match_count >= 2:
+      if match_count >= self.MATCHES_TO_WIN:
         pid = self.stats['match_counts'].index(match_count)
         if pid == self.id:
           self.won()
         else:
           self.lost(pid)
+        self.end_game()
 
   def match_made(self):
     new_matches = []
@@ -229,13 +231,39 @@ class etaGo(fisher):
       self.stats["match_counts"] = [0] * self.stats["num_players"]
       return # we assume no more thinking
     # here we change up all the probabilities based on events
-    if self.hand != self.game["hand"]: self.hand_change() # useless??
+    if self.hand != self.game["hand"]:
+      self.hand = self.game["hand"]
+      if not self.hand:
+        self.out()
+        return
+    # thinking
     if self.last_play != self.game["last_play"]: self.request_made()
     if self.matches != self.game["matches"]: self.match_made()
-    # if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
+    if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
 
   ## playing ##
-  
+  def gather_certain_cards(self):
+    self.stats["known_cards"] = []
+    for pid in self.other_pids():
+      for card, prob in self.ihands[pid].items():
+        if h.eq(1, prob):
+          self.stats["known_cards"].append(card)
+
+  def random_play(self, choices):
+    # ask player w/ most cards
+    other_hand_lengths = self.hand_lengths[:self.id] + self.hand_lengths[self.id + 1:]
+    pid = self.hand_lengths.index(max(other_hand_lengths))
+    res = []
+    avg_prob = self.avg_prob(pid)
+    for card in choices:
+      prob = self.ihands[pid][card]
+      if (prob == -1) or (prob > avg_prob):
+        res.append([pid, card])
+    return res if res else [
+      [pid, card] 
+        for pid in self.other_pids(self.id)
+      for card in choices]
+
   def prob_filter(self, choices):
     best = []
     best_prob = self.avg_prob(0)
@@ -250,14 +278,11 @@ class etaGo(fisher):
           best_prob = prob
         elif h.eq(prob, best_prob):
           best.append([pid, card])
-    if not best: # choose randomly if all avg prob
-      print("random choice")
-      return [[pid, card] 
-        for card in choices 
-        for pid in self.other_pids(self.id)]
+    if not best: # choose randomly of all avg prob
+      return self.random_play(choices)
     else: return best
 
-  def interest_filter(self, options):
+  def interest_ranks(self):
     ranks = {} # what are my interests?
     rank = ""
     for card in self.hand:
@@ -266,36 +291,70 @@ class etaGo(fisher):
         ranks[rank] += 1
       else:
         ranks[rank] = 1
-    interest_ranks = []
+    tir = [] # top interest ranks
     interest_freq = 0
     for r, freq in ranks.items():
       if freq > interest_freq:
         interest_freq = freq
-        interest_ranks = [r]
+        tir = [r]
       elif freq == interest_freq:
-        interest_ranks.append(r)
-    # out of my options, which am i most interested in?
-    temp = []
+        tir.append(r)
+    return interest_freq, tir
+
+  def interest_filter(self, options):
+    _, best_ranks = self.interest_ranks()
+    temp = [] # filter by options
     for pid, card in options:
-      if card.split()[0] in interest_ranks:
+      if card.split()[0] in best_ranks:
         temp.append([pid, card])
     return temp if temp else options
 
+  def entropy_filter(self, options):
+    # we don't want to do this 1/3 of the time
+    if random() % 3 == 0: return options
+    remove = [] # ranks to remove
+    temp = options[:]
+    # get cards we're interested in
+    freq, ranks = self.interest_ranks()
+    # calc cards we know for certain
+    if freq > 2: self.gather_certain_cards()
+    # chose what is too uncertain to ask for
+    if freq == 2:
+      for rank in ranks:
+        known_freq = 0
+        for card in self.stats["certain_cards"]:
+          if card.split()[0] == rank: known_freq += 1
+        if known_freq < 3:
+          remove.append(rank)
+    if freq == 3:
+      for rank in ranks:
+        known_freq = 0
+        for card in self.stats["certain_cards"]:
+          if card.split()[0] == rank: known_freq += 1
+        if known_freq < 4:
+          remove.append(rank)
+    # remove them if necessary
+    for t in temp:
+      card = t[1]
+      if card.split()[0] in remove:
+        temp.remove(t)
+    return temp if temp else options
+
+  def info_filter(self, options):
+    pass
+
   def play(self): # playing w/ strategy
-    # log
+    # filters output choices using various strategies
     # self.print_stats()
     choices = self.valid_plays()
     # print(f"hand: {self.hand}\nchoices: {choices}")
-    # choose highest probabilities of cards and players
     strategy = self.prob_filter(choices)
-    # certainty first strategy FIXME
-
+    strategy = self.entropy_filter(strategy)
     # print(f"highest probs: {strategy}")
-    # choose the rank you need most FIXME we don't want this
+    # get secrecy strategy FIXME
+    strategy = self.info_filter(strategy)
     strategy = self.interest_filter(strategy)
     # print(f"highest interest: {strategy}")
-    # get secrecy strategy FIXME
-
     # ask them for that card
     pid, card = choice(strategy)
     # set
