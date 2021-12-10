@@ -106,7 +106,7 @@ class etaGo(fisher):
     for card in self.ihands[pid].keys():
       # we don't affect cards set to 0 on purpose
       if 0 < self.ihands[pid][card] < (avg_prob * 0.9):
-        self.ihands[pid][card] += avg_prob / 15
+        self.ihands[pid][card] += avg_prob / 10
         if (avg_prob * 0.8) < self.ihands[pid][card] < (avg_prob * 1.3):
           self.ihands[pid][card] = self.AVGP # return to avg (?)
     if pid == self.id: # add the card to your hand
@@ -239,7 +239,7 @@ class etaGo(fisher):
     # thinking
     if self.last_play != self.game["last_play"]: self.request_made()
     if self.matches != self.game["matches"]: self.match_made()
-    if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
+    # if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()
 
   ## playing ##
   def gather_certain_cards(self):
@@ -354,9 +354,8 @@ class etaGo(fisher):
         temp.append([pid, card])
     return temp if temp else options
 
-  def play(self): # playing w/ strategy
+  def play(self):
     # filters output choices using various strategies
-    # self.print_stats()
     choices = self.valid_plays()
     # print(f"hand: {self.hand}\nchoices: {choices}")
     strategy = self.prob_filter(choices)
