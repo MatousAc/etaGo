@@ -71,7 +71,7 @@ class fisher:
       if (update != self.game):
         self.game = update
         if self.id == -1: self.id = self.game["p_id"] # set id
-        print(f"\n\n\nself.game['hand']: {self.game['hand']}")
+        # print(f"\n\n\nself.game['hand']: {self.game['hand']}")
         self.info["state"] = self.game["state"]
         # handling states
         state = self.game["state"]

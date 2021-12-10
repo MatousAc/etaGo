@@ -302,6 +302,8 @@ class etaGo(fisher):
     return interest_freq, tir
 
   def interest_filter(self, options):
+    # we want to do this 1/2 of the time
+    if random() % 2 == 0: return options
     _, best_ranks = self.interest_ranks()
     temp = [] # filter by options
     for pid, card in options:
@@ -310,8 +312,8 @@ class etaGo(fisher):
     return temp if temp else options
 
   def entropy_filter(self, options):
-    # we don't want to do this 1/3 of the time
-    if random() % 3 == 0: return options
+    # we want to do this 2/3 of the time
+    if random() % 3 != 0: return options
     remove = [] # ranks to remove
     temp = options[:]
     # get cards we're interested in
@@ -341,7 +343,16 @@ class etaGo(fisher):
     return temp if temp else options
 
   def info_filter(self, options):
-    pass
+    # we want to do this 1/2 of the time
+    if random() % 2 == 0: return options
+    rr = self.stats["rank_reqs"]
+    smallest = min(rr.values())
+    lowest = [key for key in rr if rr[key] == smallest]
+    temp = [] # filter by options
+    for pid, card in options:
+      if card.split()[0] in lowest:
+        temp.append([pid, card])
+    return temp if temp else options
 
   def play(self): # playing w/ strategy
     # filters output choices using various strategies
@@ -352,8 +363,8 @@ class etaGo(fisher):
     strategy = self.entropy_filter(strategy)
     # print(f"highest probs: {strategy}")
     # get secrecy strategy FIXME
-    strategy = self.info_filter(strategy)
     strategy = self.interest_filter(strategy)
+    strategy = self.info_filter(strategy)
     # print(f"highest interest: {strategy}")
     # ask them for that card
     pid, card = choice(strategy)
