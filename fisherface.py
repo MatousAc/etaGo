@@ -1,21 +1,21 @@
-# this file defines the structure of a fisher agent
+# this file defines the basics of how an agent will connect
+# to the server and handles the game states
 from states import state
 from uuid import uuid4
 import asyncio as aio, websockets as ws
-import random, json, time
+import json, time
 
+# use this to ssh:
+# ssh -p 2224 ac@10.14.2.1
 class fisher:
   # static
-  HOST = "10.14.2.1" #127.0.0.1"
-  PORT = 10000 #4444
-  # use this to ssh:
-  # ssh -p 2224 ac@10.14.2.1
+  # HOST = "10.14.2.1"
+  # PORT = 10000
+  HOST = "127.0.0.1"
+  PORT = 4444
   NUM_DELT = 7
-  AVGP = -1 # represents "average probability"
-  UNLIKELYP = 5e-5
   MATCHES_TO_WIN = 7
-  SUITS = ["diams", "spades", "clubs", "hearts"]
-
+  
   def __init__(self):
     self.uuid = uuid4() # generate uuid
     self.id = -1
@@ -98,20 +98,6 @@ class fisher:
           print("invalid or disconnected state returned")
       time.sleep(1)
 
-  def possibilities_deck(self):
-    deck = {} # returns an object representing a deck of possibilities
-    for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a"]:
-        for suit in ["diams", "spades", "clubs", "hearts"]:
-          deck[f"{rank} {suit}"] = self.AVGP # repr by -1 val
-    return deck
-  def avg_prob(self, cards_in_hand):
-    pass
-  def other_pids(self, pid = -1):
-    ids = [id for id in range(0, self.stats["num_players"])]
-    if pid != -1: ids.remove(pid)
-    return ids
-  def set(self, rank):
-    return [f"{rank} {suit}" for suit in self.SUITS]
   def valid_plays(self):
     plays = []
     for card in self.hand:
