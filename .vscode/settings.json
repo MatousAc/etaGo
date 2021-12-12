@@ -9,6 +9,9 @@
     "pids",
     "recalc",
     "reqs",
-    "UNLIKELYP"
+    "UNLIKELYP",
+    "virt",
+    "virts",
+    "virtuals"
   ]
 }

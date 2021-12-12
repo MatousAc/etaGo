@@ -5,7 +5,7 @@ import help as h
 
 class virtualPlayer(etaGo):
   NAME = "virtualPlayer"
-  def __init__(self):
+  def __init__(self, id):
     self.ihands = [] # imagined hands
     self.hand_lengths = []
     self.stats = {
@@ -23,10 +23,14 @@ class virtualPlayer(etaGo):
       "card_asked_for" : None,
       "success" : None
     }
-    self.matches = []
+    self.info, self.game, self.hand, self.matches = {}, {}, [], []
+    self.pause, self.id = 0, id
 
+  def out(self):
+    pass
 # consider recalculating with very different hand? FIXME
   def think(self):
+    print(f"\n{self.id} is thinking\n")
     super().think()
 
 

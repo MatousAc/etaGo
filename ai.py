@@ -34,6 +34,10 @@ class aiBase(fisher):
       if h.eq(1, prob): known_in_hand += 1
     unknown_in_hand =  self.hand_lengths[pid] - known_in_hand
     return unknown_in_hand/self.stats["unknown_cards"]
+  def avg_prob_replace(self, pid, probs):
+    avg_prob = self.avg_prob(pid)
+    return [avg_prob if h.eq(self.AVGP, prob) else prob for prob in probs]
+
   def print_stats(self):
     print(f"_____________________I'm {self.NAME} and I know_____________________")
     for pid in self.other_pids(self.id):
@@ -63,11 +67,15 @@ class aiBase(fisher):
     return deck
 
 ## setup
-  def configure_hands(self):
+  def configure(self):
+    self.stats["first_pass"] = False
+    self.id = self.game["p_id"] # set id
     self.stats["unknown_cards"] -= len(self.game["hand"])
     self.stats["num_players"] = len(self.game["other_hands"]) + 1
+    self.stats["match_counts"] = [0] * self.stats["num_players"]
     self.hand_lengths = [self.NUM_DELT] * self.stats["num_players"]
     self.hand = self.game["hand"]
+
     for pid in range(self.stats["num_players"]):
       if pid != self.id:
         self.ihands.append(self.possibilities_deck())
@@ -236,10 +244,8 @@ class aiBase(fisher):
 
   def think(self):
     if self.stats["first_pass"]:
-      self.stats["first_pass"] = False
-      self.configure_hands()
-      self.stats["match_counts"] = [0] * self.stats["num_players"]
-      return # we assume no more thinking
+      self.configure()
+      return
     # here we change up all the probabilities based on events
     if self.hand != self.game["hand"]:
       self.hand = self.game["hand"]

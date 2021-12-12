@@ -1,7 +1,8 @@
 # defines a rule-based agent to play Go Fish
-import help as h
+from time import sleep
 from random import choice, random
 from ai import aiBase
+import help as h
 class etaGo(aiBase):
   NAME = "etaGo"
 ## playing ##
@@ -118,6 +119,7 @@ class etaGo(aiBase):
     return temp if temp else options
 
   def play(self):
+    sleep(self.pause)
     # filters output choices using various strategies
     choices = self.valid_plays()
     strategy = self.prob_filter(choices)
@@ -129,11 +131,13 @@ class etaGo(aiBase):
     
     self.info["player_asked"] = pid
     self.info["card_played"] = card
-    print(f"I am asking player {self.info['player_asked']}",
+    # print(f"I am asking player {self.info['player_asked']}",
+      # f" for {self.info['card_played']}")
+    print(f"{self.id} is asking player {self.info['player_asked']}",
       f" for {self.info['card_played']}")
 
 if __name__ == "__main__":
-  print(
-    " _______ _________ _______  _______  _______ \n(  ____ \\__   __/(  ___  )(  ____ \(  ___  )\n| (    \/   ) (   | (   ) || (    \/| (   ) |\n| (__       | |   | (___) || |      | |   | |\n|  __)      | |   |  ___  || | ____ | |   | |\n| (         | |   | (   ) || | \_  )| |   | |\n| (____/\   | |   | )   ( || (___) || (___) |\n(_______/   )_(   |/     \|(_______)(_______)"
-  )
+  # print(
+  #   " _______ _________ _______  _______  _______ \n(  ____ \\__   __/(  ___  )(  ____ \(  ___  )\n| (    \/   ) (   | (   ) || (    \/| (   ) |\n| (__       | |   | (___) || |      | |   | |\n|  __)      | |   |  ___  || | ____ | |   | |\n| (         | |   | (   ) || | \_  )| |   | |\n| (____/\   | |   | )   ( || (___) || (___) |\n(_______/   )_(   |/     \|(_______)(_______)"
+  # )
   player = etaGo()

@@ -2,8 +2,9 @@
 # to the server and handles the game states
 from states import state
 from uuid import uuid4
+from time import sleep
 import asyncio as aio, websockets as ws
-import json, time
+import json
 
 # use this to ssh:
 # ssh -p 2224 ac@10.14.2.1
@@ -16,6 +17,7 @@ class fisher:
   NUM_DELT = 7
   MATCHES_TO_WIN = 7
   SUITS = ["diams", "spades", "clubs", "hearts"]
+  RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a"]
   
   def __init__(self):
     self.uuid = uuid4() # generate uuid
@@ -27,7 +29,7 @@ class fisher:
     }
     self.hand = []
     self.game = {} # game state
-    self.pause = 4 # 5 - int(input("enter speed (0-5): "))
+    self.pause = 0 # 5 - int(input("enter speed (0-5): "))
     # make connection
     aio.run(self.connect())
   # logic - meant to be overridden
@@ -43,6 +45,7 @@ class fisher:
     self.info["state"] = state.END_OF_GAME
   
   async def send(self): # sends info
+    print("sending...")
     await self.sock.send(json.dumps(self.info))
   async def set_sock(self):
     self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
@@ -52,7 +55,7 @@ class fisher:
     self.info["state"] = state.CONNECTED
     input("press enter to play")
     self.info["am_ready"] = True
-    await self.loop()
+    # await self.loop()
     try:
       await self.loop()
     except Exception as e:
@@ -72,8 +75,8 @@ class fisher:
       
       if (update != self.game):
         self.game = update
-        if self.id == -1: self.id = self.game["p_id"] # set id
         # print(f"\n\n\nself.game['hand']: {self.game['hand']}")
+        print(self.game)
         self.info["state"] = self.game["state"]
         # handling states
         state = self.game["state"]
@@ -91,19 +94,19 @@ class fisher:
         elif state == 5: # play
           self.think()
           if self.info["state"] == 6: break
-          time.sleep(self.pause)
           self.play()
           await self.send()
         elif state == 6: # end
           break
         else:
           print("invalid or disconnected state returned")
-      time.sleep(1)
+      sleep(1)
 
 # basic universal gameplay
-  def valid_plays(self):
+  def valid_plays(self, hand = None):
+    if hand == None: hand = self.hand
     plays = []
-    for card in self.hand:
+    for card in hand:
       if card not in plays: 
         plays += self.set(card.split()[0])
         plays.remove(card)
@@ -115,6 +118,12 @@ class fisher:
     return ids
   def set(self, rank):
     return [f"{rank} {suit}" for suit in self.SUITS]
+  def deck(self):
+    deck = []
+    for rank in self.RANKS:
+      for suit in self.SUITS:
+        deck.append(f"{rank} {suit}") 
+    return deck
 
 
   def won(self):
