@@ -15,6 +15,7 @@ class fisher:
   PORT = 4444
   NUM_DELT = 7
   MATCHES_TO_WIN = 7
+  SUITS = ["diams", "spades", "clubs", "hearts"]
   
   def __init__(self):
     self.uuid = uuid4() # generate uuid
@@ -26,6 +27,7 @@ class fisher:
     }
     self.hand = []
     self.game = {} # game state
+    self.pause = 4 # 5 - int(input("enter speed (0-5): "))
     # make connection
     aio.run(self.connect())
   # logic - meant to be overridden
@@ -51,17 +53,17 @@ class fisher:
     input("press enter to play")
     self.info["am_ready"] = True
     await self.loop()
-    # try:
-    #   await self.loop()
-    # except Exception as e:
-    #   if self.connections > 40: return # give up
-    #   print(f"exception caught:\n{e}")
-    #   self.connections += 1
-    #   await self.set_sock()
-    #   self.info["state"] = state.CONNECTED
-    #   self.info["am_ready"] = True
-    #   await self.send() # in case we got stuck on send
-    #   await self.loop()
+    try:
+      await self.loop()
+    except Exception as e:
+      if self.connections > 40: return # give up
+      print(f"exception caught:\n{e}")
+      self.connections += 1
+      await self.set_sock()
+      self.info["state"] = state.CONNECTED
+      self.info["am_ready"] = True
+      await self.send() # in case we got stuck on send
+      await self.loop()
 
   async def loop(self):
     while True:
@@ -87,9 +89,9 @@ class fisher:
         elif state in [3,4]: # update info
           self.think()
         elif state == 5: # play
-          time.sleep(0.1)
           self.think()
           if self.info["state"] == 6: break
+          time.sleep(self.pause)
           self.play()
           await self.send()
         elif state == 6: # end
@@ -98,6 +100,7 @@ class fisher:
           print("invalid or disconnected state returned")
       time.sleep(1)
 
+# basic universal gameplay
   def valid_plays(self):
     plays = []
     for card in self.hand:
@@ -106,6 +109,14 @@ class fisher:
         plays.remove(card)
       else: plays.remove(card)
     return plays
+  def other_pids(self, pid = -1):
+    ids = [id for id in range(0, self.stats["num_players"])]
+    if pid != -1: ids.remove(pid)
+    return ids
+  def set(self, rank):
+    return [f"{rank} {suit}" for suit in self.SUITS]
+
+
   def won(self):
     print("          _______                      _______  _        _ \n|\     /|(  ___  )|\     /|  |\     /|(  ___  )( (    /|( )\n( \   / )| (   ) || )   ( |  | )   ( || (   ) ||  \  ( || |\n \ (_) / | |   | || |   | |  | | _ | || |   | ||   \ | || |\n  \   /  | |   | || |   | |  | |( )| || |   | || (\ \) || |\n   ) (   | |   | || |   | |  | || || || |   | || | \   |(_)\n   | |   | (___) || (___) |  | () () || (___) || )  \  | _ \n   \_/   (_______)(_______)  (_______)(_______)|/    )_)(_)\n")
   def lost(self, winner):

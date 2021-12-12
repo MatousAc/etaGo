@@ -3,7 +3,6 @@ import help as h
 from fisherface import fisher
 class aiBase(fisher):
   NAME = "AI"
-  SUITS = ["diams", "spades", "clubs", "hearts"]
   AVGP = -1 # represents "average probability"
   UNLIKELYP = 5e-5
   def __init__(self):
@@ -62,12 +61,6 @@ class aiBase(fisher):
         for suit in ["diams", "spades", "clubs", "hearts"]:
           deck[f"{rank} {suit}"] = self.AVGP # repr by -1 val
     return deck
-  def other_pids(self, pid = -1):
-    ids = [id for id in range(0, self.stats["num_players"])]
-    if pid != -1: ids.remove(pid)
-    return ids
-  def set(self, rank):
-    return [f"{rank} {suit}" for suit in self.SUITS]
 
 ## setup
   def configure_hands(self):
