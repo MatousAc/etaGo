@@ -9,7 +9,7 @@ class sigmaGo(aiBase):
   NAME = "sigmaGo"
   BRANCH_FACT = 12
   SIM_DEPTH = 10
-  SIM_BREADTH = 120
+  SIM_BREADTH = 150
   JOIN_STR = "$"
 
   def __init__(self):
@@ -171,9 +171,9 @@ class sigmaGo(aiBase):
         rank_count[rank] += 1
         if rank_count[rank] == 4: new_sets += 1
       if pid == self.id:
-        fitness += 15 * new_sets
+        fitness += 11 * new_sets
       else:
-        fitness -= 10 * new_sets
+        fitness -= 8 * new_sets
     return fitness
 
   def best_plays(self, pig, sample_space):
