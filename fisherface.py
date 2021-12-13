@@ -15,12 +15,13 @@ class fisher:
   # HOST = "127.0.0.1"
   # PORT = 4444
   NUM_DELT = 7
-  MATCHES_TO_WIN = 7
+  MATCHES_TO_WIN = 4
   SUITS = ["diams", "spades", "clubs", "hearts"]
   RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a"]
   
   def __init__(self):
     self.uuid = uuid4() # generate uuid
+    self.gamePlayed = False
     self.id = -1
     self.connections = 0
     self.info = { # keeps track of client info
@@ -38,22 +39,24 @@ class fisher:
   def play(self): # chooses a player and card
     pass
   def end_game(self):
-    self.info["state"] = state.END_OF_GAME
+    self.info["state"] = state.CONNECTED
+    self.gamePlayed = True
+
   def out(self):
     print("          _______             _        _______  _______  _______  _ \n|\     /|(  ___  )|\     /|  ( \      (  ___  )(  ____ \(  ____ \( )\n( \   / )| (   ) || )   ( |  | (      | (   ) || (    \/| (    \/| |\n \ (_) / | |   | || |   | |  | |      | |   | || (_____ | (__    | |\n  \   /  | |   | || |   | |  | |      | |   | |(_____  )|  __)   | |\n   ) (   | |   | || |   | |  | |      | |   | |      ) || (      (_)\n   | |   | (___) || (___) |  | (____/\| (___) |/\____) || (____/\ _ \n   \_/   (_______)(_______)  (_______/(_______)\_______)(_______/(_)\n")
     print("no more cards")
-    self.info["state"] = state.END_OF_GAME
+    self.info["state"] = state.CONNECTED
   
   async def send(self): # sends info
     print("sending...")
     await self.sock.send(json.dumps(self.info))
   async def set_sock(self):
-    self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
+    self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT + self.offset}/websocket/{self.uuid}")
 
   async def connect(self):
     await self.set_sock()
     self.info["state"] = state.CONNECTED
-    input("press enter to play")
+    if self.waiting: input("press enter to play")
     self.info["am_ready"] = True
     # await self.loop()
     try:
@@ -83,11 +86,7 @@ class fisher:
           await self.send()
         elif (state == 2): # revert
           await self.send()
-          # self.info["am_ready"] = False
-          # self.info["state"] = state.CONNECTED
-          # await self.send()
-          # input("press enter to signal that you are ready to play") # blocks until ready
-          # self.info["am_ready"] = True          
+          if self.gamePlayed: break
         elif state in [3,4]: # update info
           self.think()
         elif state == 5: # play
@@ -127,15 +126,15 @@ class fisher:
 
   def won(self):
     print("          _______                      _______  _        _ \n|\     /|(  ___  )|\     /|  |\     /|(  ___  )( (    /|( )\n( \   / )| (   ) || )   ( |  | )   ( || (   ) ||  \  ( || |\n \ (_) / | |   | || |   | |  | | _ | || |   | ||   \ | || |\n  \   /  | |   | || |   | |  | |( )| || |   | || (\ \) || |\n   ) (   | |   | || |   | |  | || || || |   | || | \   |(_)\n   | |   | (___) || (___) |  | () () || (___) || )  \  | _ \n   \_/   (_______)(_______)  (_______)(_______)|/    )_)(_)\n")
+    self.is_winner = True
   def lost(self, winner):
-    pass
     print("          _______             _        _______  _______  _______  _ \n|\     /|(  ___  )|\     /|  ( \      (  ___  )(  ____ \(  ____ \( )\n( \   / )| (   ) || )   ( |  | (      | (   ) || (    \/| (    \/| |\n \ (_) / | |   | || |   | |  | |      | |   | || (_____ | (__    | |\n  \   /  | |   | || |   | |  | |      | |   | |(_____  )|  __)   | |\n   ) (   | |   | || |   | |  | |      | |   | |      ) || (      (_)\n   | |   | (___) || (___) |  | (____/\| (___) |/\____) || (____/\ _ \n   \_/   (_______)(_______)  (_______/(_______)\_______)(_______/(_)\n")
     print(f"Player {winner} won!")
+    self.is_winner = False
 
   # destructor
   def __del__(self):
-    # self.sock.close()
-    pass
+    return self.is_winner
 
 # testing
 if __name__ == "__main__":
