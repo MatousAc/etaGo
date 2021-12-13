@@ -30,7 +30,6 @@ class virtualPlayer(etaGo):
     pass
 # consider recalculating with very different hand? FIXME
   def think(self):
-    print(f"\n{self.id} is thinking\n")
     super().think()
 
 

@@ -33,7 +33,9 @@ class aiBase(fisher):
     for card, prob in hand.items():
       if h.eq(1, prob): known_in_hand += 1
     unknown_in_hand =  self.hand_lengths[pid] - known_in_hand
-    return unknown_in_hand/self.stats["unknown_cards"]
+    unkcrd = self.stats["unknown_cards"]
+    div = unkcrd if unkcrd else 1
+    return unknown_in_hand/div
   def avg_prob_replace(self, pid, probs):
     avg_prob = self.avg_prob(pid)
     return [avg_prob if h.eq(self.AVGP, prob) else prob for prob in probs]
@@ -255,4 +257,3 @@ class aiBase(fisher):
     # thinking
     if self.last_play != self.game["last_play"]: self.request_made()
     if self.matches != self.game["matches"]: self.match_made()
-    # if self.game["state"] == state.WAITING_FOR_OTHERS: self.print_stats()

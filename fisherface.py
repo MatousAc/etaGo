@@ -10,10 +10,10 @@ import json
 # ssh -p 2224 ac@10.14.2.1
 class fisher:
   # static
-  # HOST = "10.14.2.1"
-  # PORT = 10000
-  HOST = "127.0.0.1"
-  PORT = 4444
+  HOST = "10.14.2.1"
+  PORT = 10000
+  # HOST = "127.0.0.1"
+  # PORT = 4444
   NUM_DELT = 7
   MATCHES_TO_WIN = 7
   SUITS = ["diams", "spades", "clubs", "hearts"]
@@ -76,7 +76,6 @@ class fisher:
       if (update != self.game):
         self.game = update
         # print(f"\n\n\nself.game['hand']: {self.game['hand']}")
-        print(self.game)
         self.info["state"] = self.game["state"]
         # handling states
         state = self.game["state"]

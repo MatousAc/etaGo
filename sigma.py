@@ -1,15 +1,16 @@
-# defines a watered-down mcts agent to play Go Fish
+# defines an adapted mcts agent to play Go Fish
 from ai import aiBase
 from virtual import virtualPlayer
 from random import choices, choice, sample, random, shuffle
+from statistics import median
 import help as h
 
 class sigmaGo(aiBase):
   NAME = "sigmaGo"
-  BRANCH_FACT = 1
+  BRANCH_FACT = 12
   SIM_DEPTH = 10
-  SIM_BREADTH =  1
-  PIG1 = {'hands': [['k hearts', '7 spades', '2 diams', 'q clubs', '3 spades', '9 diams', '2 clubs', 'k spades', '2 spades', '2 hearts', 'j clubs'], ['3 clubs', 'a hearts', 'j diams', '4 clubs', '10 clubs', '8 spades', '5 diams'], ['5 spades', '6 spades', '8 hearts', 'a spades', 'k diams', 'q diams', '5 clubs']], 'drawpile': ['9 hearts', '8 clubs', '7 diams', 'k clubs', '9 spades', '10 spades', '4 diams', '6 diams', '4 spades', '6 clubs', '5 hearts', '10 diams', 'a clubs', 'a diams', '8 diams', '7 clubs', '9 clubs', '6 hearts', '4 hearts', '3 hearts', 'q hearts', '7 hearts', 'j spades', 'j hearts', '3 diams', '10 hearts', 'q spades']}
+  SIM_BREADTH = 120
+  JOIN_STR = "$"
 
   def __init__(self):
     self.virts = []
@@ -19,7 +20,6 @@ class sigmaGo(aiBase):
   def configure(self):
     super().configure()
     self.virts = [virtualPlayer(pid) for pid in range(self.stats["num_players"])]
-    print(f"self.virts: {self.virts}")
 
 ## virtual thinking ##
   def game_conversion(self, pid, hand = None):
@@ -37,27 +37,28 @@ class sigmaGo(aiBase):
     # every vp must think along with sigmaGo
     for pid in range(self.stats["num_players"]):
       self.virts[pid].game = self.game_conversion(pid)
-      print(f"\nvirtual player #{pid} knows: {self.virts[pid].game}")
       self.virts[pid].think()
 
   # thanks to Raymond Hettinger @ SO for most of the following f(x):
   def sample_hand(self, pid):
     ihand = self.ihands[pid]
-    k = self.hand_lengths[pid]
     population = list(ihand.keys())
     weights = self.avg_prob_replace(pid, ihand.values())
-    weights = [100 if h.eq(1, prob) else prob for prob in weights]
+    weights = [10 if h.eq(1, prob) else prob for prob in weights]
+    nonzero = len([w for w in weights if not h.eq(0, w)])
+    # print(f"\npop = {population}\nweights = {weights}")
 
-    positions = range(len(population))
+    positions = [x for x in range(len(population))]
     indices = []
-    while True:
-        needed = k - len(indices)
-        if not needed:
-            break
-        for i in choices(positions, weights, k=needed):
-            if weights[i]:
-                weights[i] = 0.0
-                indices.append(i)
+    while (len(indices) < self.hand_lengths[pid]) and (nonzero):
+        [c] = choices(positions, weights, k=1)
+        # print(f"\nc {c}")
+        if c not in indices:
+          weights[c] = 0.000001
+          nonzero -= 1
+          # print(f"chose {population[c]}")
+          # print(f"\nweights {weights}")
+          indices.append(c)
     return [population[i] for i in indices]
 
   def drawpile(self, hands):
@@ -68,7 +69,6 @@ class sigmaGo(aiBase):
         pile.append(f"{rank} {suit}") 
     pile = list(set(pile) - set(sum(hands, [])))
     shuffle(pile)
-    print(f"pile: {pile}")
     return pile
 
   def sample_pig(self):
@@ -99,10 +99,10 @@ class sigmaGo(aiBase):
     return final
 
   def simulate(self, play, pig, asking = None, depth = SIM_DEPTH):
-    print(f"\ncurrent pig:  {pig}")
-    print(f"\ncurrent play: {play}")
     if depth == self.SIM_DEPTH:
       self.store["cur_virt_ihands"] = [virt.ihands for virt in self.virts]
+      # print("\n\n\n\n\nfirst round")
+    # print(f"\ncurrent pig:  {pig}")
     depth -= 1
     if asking == None: asking = self.id
     asked = play[0]
@@ -126,7 +126,7 @@ class sigmaGo(aiBase):
         asking = (asking + 1) % self.stats["num_players"]
     
     ## setting up next play
-    if depth != 0:
+    if (depth != 0):
       # virt rethinking
       for pid in range(self.stats["num_players"]):
         sim_game = self.virts[pid].game.copy()
@@ -140,8 +140,9 @@ class sigmaGo(aiBase):
         }
         self.virts[pid].game = sim_game
         self.virts[pid].think()
+        if not self.virts[pid].valid_plays(): return pig
       
-      print(f"now it's {asking}'s turn")
+      # print(f"now it's {asking}'s turn")
       virt = self.virts[asking]
       virt.play()
       play = virt.info["player_asked"], virt.info["card_played"]
@@ -154,16 +155,43 @@ class sigmaGo(aiBase):
     return pig
 
   def fitness(self, hands):
-    pass
+    fitness = 0
+    # reward/punishment based on card number
+    prev_other = sum(self.hand_lengths) - self.hand_lengths[self.id]
+    curr_other = sum([len(hand) for hand in hands])
+    fitness -= (curr_other - prev_other)
+    fitness += 3 * (self.hand_lengths[self.id] - len(hands[self.id]))
+    for pid in range(self.stats["num_players"]):
+      # reward/punishment based on new sets
+      new_sets = 0
+      suit_hand = [card.split()[0] for card in hands[pid]]
+      rank_count = {f"{r}" : 0 for r in [n for n in range(2, 11)] + ["j", "q", "k", "a"]}
+      for card in hands[pid]:
+        rank = card.split()[0]
+        rank_count[rank] += 1
+        if rank_count[rank] == 4: new_sets += 1
+      if pid == self.id:
+        fitness += 15 * new_sets
+      else:
+        fitness -= 10 * new_sets
+    return fitness
 
   def best_plays(self, pig, sample_space):
-    plays = [] # choose some best plays
+    play_fits = {} # see where different actions take you
     sample_plays = sample(sample_space, self.BRANCH_FACT)
     for play in sample_plays:
-      print(f"\npig before: {pig}")
+      # print(f"\npig before: {pig}")
       fin_pig = self.simulate(play, pig)
-      print(f"\npig after:  {fin_pig}")
-      print(fin_pig)
+      # print(f"\npig after:  {fin_pig}")
+      play = sample_plays.index(play) #self.JOIN_STR.join(map(str, play))
+      play_fits[play] = self.fitness(fin_pig["hands"])
+    
+    # return the upper quartile
+    med = median(play_fits.values())
+    mx = max(play_fits.values())
+    q3 = (med + mx) / 2 # FIXME - return max and anything reasonably close?
+    plays = [sample_plays[play]
+      for play in play_fits.keys() if play_fits[play] >= q3]
     return plays
     
 
@@ -172,18 +200,15 @@ class sigmaGo(aiBase):
     nodes = [[pid, card] 
         for pid in self.other_pids(self.id)
       for card in self.valid_plays()]
-    # # loop through many possibilities of hands
+    # loop through many possibilities of hands
     best = []
     for _ in range(self.SIM_BREADTH):
       pig = self.sample_pig()
       best += self.best_plays(pig, nodes)
     
-    print(f"hand_lengths: {self.hand_lengths}")
-
-    self.info["player_asked"] = choice(self.other_pids(self.id))
-    self.info["card_played"] = choice(self.valid_plays())
-
-
+    pid, card = choice(best)
+    self.info["player_asked"] = pid # int(pid)
+    self.info["card_played"] = card
 
 if __name__ == "__main__":
   player = sigmaGo()
