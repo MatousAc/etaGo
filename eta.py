@@ -122,19 +122,15 @@ class etaGo(aiBase):
     sleep(self.pause)
     # filters output choices using various strategies
     choices = self.valid_plays()
-    # print(f"\nchoices: {choices}\n")
     strategy = self.prob_filter(choices)
     strategy = self.entropy_filter(strategy)
     strategy = self.interest_filter(strategy)
     strategy = self.info_filter(strategy)
     # ask them for that card
-    # print(f"\nstrategy: {strategy}\n")
     pid, card = choice(strategy)
     
     self.info["player_asked"] = pid
     self.info["card_played"] = card
-    # print(f"I am asking player {self.info['player_asked']}",
-      # f" for {self.info['card_played']}")
 
 if __name__ == "__main__":
   # print(

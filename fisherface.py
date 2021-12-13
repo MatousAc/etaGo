@@ -2,7 +2,7 @@
 # to the server and handles the game states
 from states import state
 from uuid import uuid4
-from time import sleep
+from time import sleep, time
 import asyncio as aio, websockets as ws
 import json
 
@@ -22,6 +22,7 @@ class fisher:
   def __init__(self):
     self.uuid = uuid4() # generate uuid
     self.gamePlayed = False
+    self.is_winner = False
     self.id = -1
     self.connections = 0
     self.info = { # keeps track of client info
@@ -33,6 +34,7 @@ class fisher:
     self.pause = 0 # 5 - int(input("enter speed (0-5): "))
     # make connection
     aio.run(self.connect())
+
   # logic - meant to be overridden
   def think(self): # obtains and organizes info
     pass
@@ -51,12 +53,12 @@ class fisher:
     print("sending...")
     await self.sock.send(json.dumps(self.info))
   async def set_sock(self):
-    self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT + self.offset}/websocket/{self.uuid}")
+    self.sock = await ws.connect(f"ws://{self.HOST}:{self.PORT}/websocket/{self.uuid}")
 
   async def connect(self):
     await self.set_sock()
     self.info["state"] = state.CONNECTED
-    if self.waiting: input("press enter to play")
+    input("press enter to play")
     self.info["am_ready"] = True
     # await self.loop()
     try:
@@ -78,21 +80,23 @@ class fisher:
       
       if (update != self.game):
         self.game = update
-        # print(f"\n\n\nself.game['hand']: {self.game['hand']}")
         self.info["state"] = self.game["state"]
         # handling states
         state = self.game["state"]
         if state == 1: # restart
           await self.send()
-        elif (state == 2): # revert
+        elif (state == 2):
           await self.send()
           if self.gamePlayed: break
         elif state in [3,4]: # update info
+          tst = time()
           self.think()
+          print("think time: --- %s seconds ---" % (time() - tst))
         elif state == 5: # play
           self.think()
-          if self.info["state"] == 6: break
+          pst = time()
           self.play()
+          print("play  time: --- %s seconds ---" % (time() - pst))
           await self.send()
         elif state == 6: # end
           break
