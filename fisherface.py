@@ -2,7 +2,7 @@
 # to the server and handles the game states
 from states import state
 from uuid import uuid4
-from time import sleep, time
+from time import sleep
 import asyncio as aio, websockets as ws
 import json
 
@@ -10,10 +10,10 @@ import json
 # ssh -p 2224 ac@10.14.2.1
 class fisher:
   # static
-  HOST = "10.14.2.1"
-  PORT = 10000
-  # HOST = "127.0.0.1"
-  # PORT = 4444
+  # HOST = "10.14.2.1"
+  # PORT = 10000
+  HOST = "127.0.0.1"
+  PORT = 4444
   NUM_DELT = 7
   MATCHES_TO_WIN = 4
   SUITS = ["diams", "spades", "clubs", "hearts"]
@@ -89,14 +89,10 @@ class fisher:
           await self.send()
           if self.gamePlayed: break
         elif state in [3,4]: # update info
-          tst = time()
           self.think()
-          print("think time: --- %s seconds ---" % (time() - tst))
         elif state == 5: # play
           self.think()
-          pst = time()
           self.play()
-          print("play  time: --- %s seconds ---" % (time() - pst))
           await self.send()
         elif state == 6: # end
           break

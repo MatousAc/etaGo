@@ -76,7 +76,7 @@ class etaGo(aiBase):
     return temp if temp else options
 
   def entropy_filter(self, options):
-    # we want to do this 2/3 of the time
+    # we want to do this 1/3 of the time
     if random() % 3 != 0: return options
     remove = [] # ranks to remove
     temp = options[:]
