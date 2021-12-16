@@ -6,12 +6,8 @@ from time import sleep
 import asyncio as aio, websockets as ws
 import json
 
-# use this to ssh:
-# ssh -p 2224 ac@10.14.2.1
 class fisher:
   # static
-  # HOST = "10.14.2.1"
-  # PORT = 10000
   HOST = "127.0.0.1"
   PORT = 4444
   NUM_DELT = 7
